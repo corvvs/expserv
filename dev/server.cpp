@@ -1,15 +1,16 @@
-#include "socket.hpp"
+#include "listeningsocket.hpp"
+#include "connectedsocket.hpp"
 
 #define N 1024
 
 int main() {
-    Socket sock = Socket::bind(SD_IP4, ST_TCP, 8080);
+    ListeningSocket sock = ListeningSocket::bind(SD_IP4, ST_TCP, 8080);
     std::cout << sock.get_fd() << std::endl;
 
     sock.listen(128);
 
     while (1) {
-        Socket accepted = sock.accept();
+        ConnectedSocket accepted = sock.accept();
         std::cout << "!!accepted!!" << std::endl;
         char buf[N];
         while (1) {

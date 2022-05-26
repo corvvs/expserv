@@ -27,14 +27,20 @@ typedef uint16_t    t_port;
 typedef uint32_t    t_addressv4;
 
 class Socket {
-
-private:
+protected:
     int             fd;
     SocketDomain    domain;
     SocketType      type;
+    bool            holding;
 
-public:
+private:
+    // コンストラクタの直接呼び出しは禁止
+    // Socketはfactoryメソッドbind, connectおよびインスタンスメソッドacceptによってのみ生成される
 
+    // デフォルトコンストラクタは使用禁止(呼び出すと例外を投げる)
+    Socket();
+
+protected:
     Socket(
         SocketDomain sdomain,
         SocketType stype
@@ -42,28 +48,19 @@ public:
 
     Socket(
         int fd,
-        Socket& listening
+        SocketDomain sdomain,
+        SocketType stype
     );
 
+
+public:
+    Socket(const Socket& other);
     ~Socket();
+    Socket& operator=(const Socket& rhs);
 
-    int     get_fd() const;
-
-    static Socket   bind(
-        SocketDomain sdomain,
-        SocketType stype,
-        t_port port
-    );
-    static Socket   connect(
-        SocketDomain sdomain,
-        SocketType stype,
-        t_port port
-    );
-
-    void    listen(int backlog);
-    Socket  accept();
-    ssize_t send(const void *buffer, size_t len, int flags);
-    ssize_t receive(void *buffer, size_t len, int flags);
+    int             get_fd() const;
+    SocketDomain    get_domain() const;
+    SocketType      get_type() const;
 };
 
 #endif
