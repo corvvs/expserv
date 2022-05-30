@@ -27,14 +27,15 @@ ListeningSocket& ListeningSocket::operator=(const ListeningSocket& rhs) {
     return *this;
 }
 
-ListeningSocket ListeningSocket::bind(
+ListeningSocket*    ListeningSocket::bind(
     SocketDomain sdomain,
     SocketType stype,
     t_port port
 ) {
 
-    ListeningSocket sock = ListeningSocket(sdomain, stype);
-    int fd = sock.get_fd();
+    ListeningSocket* sock = new ListeningSocket(sdomain, stype);
+    sock->waitAccept();
+    int fd = sock->get_fd();
 
     struct sockaddr_in sa;
     cpp_bzero(&sa, sizeof(sa));
@@ -58,11 +59,33 @@ void    ListeningSocket::listen(int backlog) {
     DOUT() << "now listening..." << std::endl;
 }
 
-ConnectedSocket  ListeningSocket::accept() {
+void            ListeningSocket::waitAccept() {
+    int rv;
+    rv = fcntl(fd, F_SETFL, O_NONBLOCK);
+    std::cout << "rv: " << rv << ", " << errno << std::endl;
+    std::cout << strerror(errno) << std::endl;
+    // rv = ::accept(fd, NULL, NULL);
+    // std::cout << "rv: " << rv << ", " << errno << std::endl;
+    // std::cout << strerror(errno) << std::endl;
+}
+
+
+ConnectedSocket*    ListeningSocket::accept() {
     int accepted_fd = ::accept(fd, NULL, NULL);
     DOUT() << "accepted" << std::endl;
     if (accepted_fd < 0) {
         throw std::runtime_error("failed to accept");
     }
-    return ConnectedSocket(accepted_fd, *this);
+    return new ConnectedSocket(accepted_fd, *this);
+}
+
+void            ListeningSocket::run(EventLoop& loop) {
+    std::cout << "run_counter is " << run_counter << std::endl;
+    switch (run_counter) {
+        case 0: {
+            ConnectedSocket* accepted = accept();
+            loop.preserve_set(accepted, SHMT_READ);
+            return;
+        }
+    }
 }

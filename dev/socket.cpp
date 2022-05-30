@@ -29,7 +29,7 @@ Socket::Socket() {
 Socket::Socket(
     SocketDomain sdomain,
     SocketType stype
-): holding(false) {
+): holding(false), run_counter(0) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
@@ -48,7 +48,7 @@ Socket::Socket(
     int sock_fd,
     SocketDomain sdomain,
     SocketType stype
-): fd(sock_fd), holding(true) {
+): fd(sock_fd), holding(true), run_counter(0) {
     domain = sdomain;
     type = stype;
 }
@@ -72,8 +72,7 @@ Socket& Socket::operator=(const Socket& rhs) {
 
 Socket::~Socket() {
     if (holding) {
-        DOUT() << "destroying socket " << fd << ", " << domain << ", " << type << "..." << std::endl;
-        close(fd);
+        destroy();
     }
 }
 
@@ -87,4 +86,9 @@ SocketDomain    Socket::get_domain() const {
 
 SocketType      Socket::get_type() const {
     return type;
+}
+
+void            Socket::destroy() {
+    DOUT() << "destroying socket " << fd << ", " << domain << ", " << type << "..." << std::endl;
+    close(fd);
 }

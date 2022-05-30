@@ -11,6 +11,7 @@
 # include <unistd.h>
 # include <netdb.h>
 # include "test_common.hpp"
+# include "eventloop.hpp"
 
 
 enum SocketDomain {
@@ -26,12 +27,16 @@ enum SocketType {
 typedef uint16_t    t_port;
 typedef uint32_t    t_addressv4;
 
+class EventLoop;
+
 class Socket {
 protected:
     int             fd;
     SocketDomain    domain;
     SocketType      type;
     bool            holding;
+
+    int             run_counter;
 
 private:
     // コンストラクタの直接呼び出しは禁止
@@ -52,15 +57,18 @@ protected:
         SocketType stype
     );
 
+    Socket(const Socket& other);
+    void    destroy();
 
 public:
-    Socket(const Socket& other);
-    ~Socket();
+    virtual ~Socket();
     Socket& operator=(const Socket& rhs);
 
     int             get_fd() const;
     SocketDomain    get_domain() const;
     SocketType      get_type() const;
+
+    virtual void    run(EventLoop& loop) = 0;
 };
 
 #endif

@@ -1,5 +1,6 @@
 #include "connectedsocket.hpp"
 #include "listeningsocket.hpp"
+#define N 1024
 
 static int sockdomain(SocketDomain d) {
     switch (d) {
@@ -35,14 +36,14 @@ ConnectedSocket& ConnectedSocket::operator=(const ConnectedSocket& rhs) {
     return *this;
 }
 
-ConnectedSocket ConnectedSocket::connect(
+ConnectedSocket*    ConnectedSocket::connect(
     SocketDomain sdomain,
     SocketType stype,
     t_port port
 ) {
 
-    ConnectedSocket sock = ConnectedSocket(sdomain, stype);
-    int fd = sock.get_fd();
+    ConnectedSocket* sock = new ConnectedSocket(sdomain, stype);
+    int fd = sock->get_fd();
 
     struct sockaddr_in sa;
     cpp_bzero(&sa, sizeof(sa));
@@ -69,4 +70,24 @@ ssize_t ConnectedSocket::send(const void *buffer, size_t len, int flags) {
 
 ssize_t ConnectedSocket::receive(void *buffer, size_t len, int flags) {
     return ::recv(get_fd(), buffer, len, flags);
+}
+
+void    ConnectedSocket::run(EventLoop& loop) {
+    (void)loop;
+    std::cout << "run_counter is " << run_counter << std::endl;
+    switch (run_counter) {
+        case 0: {
+            char buf[N];
+            ssize_t receipt = receive(&buf, N, 0);
+            if (receipt <= 0) {
+                run_counter++;
+                return;
+            }
+            write(STDOUT_FILENO, buf, receipt);
+            return;
+        }
+        case 1: {
+            loop.preserve_clear(this, SHMT_READ);
+        }
+    }
 }

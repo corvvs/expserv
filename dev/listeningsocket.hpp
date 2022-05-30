@@ -14,13 +14,16 @@ public:
     ListeningSocket(const ListeningSocket& other);
     ListeningSocket& operator=(const ListeningSocket& rhs);
 
-    static ListeningSocket    bind(
+    static ListeningSocket* bind(
         SocketDomain sdomain,
         SocketType stype,
         t_port port
     );
-    void            listen(int backlog);
-    ConnectedSocket accept();
+    void                listen(int backlog);
+    void                waitAccept();
+    ConnectedSocket*    accept();
+
+    void    run(EventLoop& loop);
 };
 
 #endif

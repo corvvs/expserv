@@ -1,6 +1,7 @@
 #ifndef CONNECTEDSOCKET_HPP
 # define CONNECTEDSOCKET_HPP
 # include "socket.hpp"
+# include <fcntl.h>
 
 class ListeningSocket;
 
@@ -21,13 +22,15 @@ public:
     ConnectedSocket(const ConnectedSocket& other);
     ConnectedSocket& operator=(const ConnectedSocket& rhs);
 
-    static ConnectedSocket  connect(
+    static ConnectedSocket  *connect(
         SocketDomain sdomain,
         SocketType stype,
         t_port port
     );
     ssize_t send(const void *buffer, size_t len, int flags);
     ssize_t receive(void *buffer, size_t len, int flags);
+
+    void    run(EventLoop& loop);
 };
 
 #endif
