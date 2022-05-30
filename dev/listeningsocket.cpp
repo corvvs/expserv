@@ -62,11 +62,9 @@ void    ListeningSocket::listen(int backlog) {
 void            ListeningSocket::waitAccept() {
     int rv;
     rv = fcntl(fd, F_SETFL, O_NONBLOCK);
-    std::cout << "rv: " << rv << ", " << errno << std::endl;
-    std::cout << strerror(errno) << std::endl;
-    // rv = ::accept(fd, NULL, NULL);
-    // std::cout << "rv: " << rv << ", " << errno << std::endl;
-    // std::cout << strerror(errno) << std::endl;
+    if (rv < 0) {
+        throw std::runtime_error("failed to fcntl");
+    }
 }
 
 
@@ -80,7 +78,6 @@ ConnectedSocket*    ListeningSocket::accept() {
 }
 
 void            ListeningSocket::run(EventLoop& loop) {
-    std::cout << "run_counter is " << run_counter << std::endl;
     switch (run_counter) {
         case 0: {
             ConnectedSocket* accepted = accept();

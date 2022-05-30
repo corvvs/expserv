@@ -16,6 +16,7 @@ private:
         int fd,
         ListeningSocket& listening
     );
+
 public:
     friend class ListeningSocket;
 
@@ -31,6 +32,9 @@ public:
     ssize_t receive(void *buffer, size_t len, int flags);
 
     void    run(EventLoop& loop);
+
+private:
+    std::string receipt_str;
 };
 
 #endif

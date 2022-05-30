@@ -73,21 +73,18 @@ ssize_t ConnectedSocket::receive(void *buffer, size_t len, int flags) {
 }
 
 void    ConnectedSocket::run(EventLoop& loop) {
-    (void)loop;
-    std::cout << "run_counter is " << run_counter << std::endl;
     switch (run_counter) {
         case 0: {
             char buf[N];
             ssize_t receipt = receive(&buf, N, 0);
             if (receipt <= 0) {
-                run_counter++;
+                std::cout << receipt_str << std::endl;
+                receipt_str.clear();
+                loop.preserve_clear(this, SHMT_READ);
                 return;
             }
-            write(STDOUT_FILENO, buf, receipt);
+            receipt_str += std::string(buf, receipt);
             return;
-        }
-        case 1: {
-            loop.preserve_clear(this, SHMT_READ);
         }
     }
 }
