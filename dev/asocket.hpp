@@ -7,9 +7,10 @@ class EventLoop;
 
 class ASocket {
 protected:
-    int             fd;
+    t_fd            fd;
     SocketDomain    domain;
     SocketType      type;
+    t_port          port;
     bool            holding;
 
     int             run_counter;
@@ -40,11 +41,12 @@ public:
     virtual ~ASocket();
     ASocket& operator=(const ASocket& rhs);
 
-    virtual int             get_fd() const = 0;
+    virtual int     get_fd() const = 0;
     SocketDomain    get_domain() const;
     SocketType      get_type() const;
+    t_port          get_port() const;
 
-    virtual void    run(EventLoop& loop) = 0;
+    virtual void    notify(EventLoop& loop) = 0;
 };
 
 #endif

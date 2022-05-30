@@ -28,8 +28,6 @@ int main() {
             sendss(sock, ss);
             ss << pid;
             sendss(sock, ss);
-            ss << "\n";
-            sendss(sock, ss);
             return 0;
         }
     }

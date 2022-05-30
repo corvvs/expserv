@@ -23,6 +23,7 @@ enum SocketType {
     ST_UDP
 };
 
+typedef int	        t_fd;
 typedef uint16_t    t_port;
 typedef uint32_t    t_addressv4;
 

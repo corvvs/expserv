@@ -68,12 +68,11 @@ void    EventLoop::prepare_fd_set(socket_map& sockmap, fd_set *sockset) {
 }
 
 // sockmap 中のソケットがFD集合 socketset に含まれるかどうかを調べ,
-// 含まれている場合はソケットの run メソッドを実行する
+// 含まれている場合はソケットの notify メソッドを実行する
 void    EventLoop::scan_fd_set(socket_map& sockmap, fd_set *sockset) {
     for (EventLoop::socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
-        int fd = it->first;
-        if (FD_ISSET(fd, sockset)) {
-            it->second->run(*this);
+        if (FD_ISSET(it->first, sockset)) {
+            it->second->notify(*this);
         }
     }
 }

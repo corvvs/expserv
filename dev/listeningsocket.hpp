@@ -29,7 +29,7 @@ public:
     ConnectedSocket*    accept();
     int get_fd() const;
 
-    void    run(EventLoop& loop);
+    void    notify(EventLoop& loop);
 };
 
 #endif

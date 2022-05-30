@@ -43,20 +43,21 @@ ListeningSocket*    ListeningSocket::bind(
     sa.sin_family = d;
     sa.sin_port = htons(port);
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
-    DOUT() << "binding asocket for: " << port << ", " << sa.sin_addr.s_addr << "..." << std::endl;
+    // DOUT() << "binding asocket for: " << port << ", " << sa.sin_addr.s_addr << "..." << std::endl;
     if (::bind(fd, (struct sockaddr*) &sa, sizeof(struct sockaddr_in)) == -1) {
         throw std::runtime_error("failed to bind a asocket");
     }
-    DOUT() << "bound asocket." << std::endl;
+    // DOUT() << "bound asocket." << std::endl;
+    sock->port = port;
     return sock;
 }
 
 void    ListeningSocket::listen(int backlog) {
-    DOUT() << "making asocket listening in backlog: " << backlog << std::endl;
+    // DOUT() << "making asocket listening in backlog: " << backlog << std::endl;
     if (::listen(fd, backlog) == -1) {
         throw std::runtime_error("failed to listen");
     }
-    DOUT() << "now listening..." << std::endl;
+    // DOUT() << "now listening..." << std::endl;
 }
 
 void            ListeningSocket::waitAccept() {
@@ -70,14 +71,14 @@ void            ListeningSocket::waitAccept() {
 
 ConnectedSocket*    ListeningSocket::accept() {
     int accepted_fd = ::accept(fd, NULL, NULL);
-    DOUT() << "accepted" << std::endl;
+    // DOUT() << "accepted" << std::endl;
     if (accepted_fd < 0) {
         throw std::runtime_error("failed to accept");
     }
     return new ConnectedSocket(accepted_fd, *this);
 }
 
-void            ListeningSocket::run(EventLoop& loop) {
+void            ListeningSocket::notify(EventLoop& loop) {
     switch (run_counter) {
         case 0: {
             ConnectedSocket* accepted = accept();

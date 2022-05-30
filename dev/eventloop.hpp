@@ -29,8 +29,8 @@ struct SocketPreservation {
 
 class EventLoop {
     public:
-        typedef std::map<int, ISocket*>  socket_map;
-        typedef std::vector< SocketPreservation > update_queue;
+        typedef std::map<t_fd, ISocket*>            socket_map;
+        typedef std::vector< SocketPreservation >   update_queue;
 
     private:
         socket_map                      read_map;

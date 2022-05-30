@@ -33,12 +33,12 @@ ASocket::ASocket(
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
-    DOUT() << "create asocket for: " << d << ", " << t << "..." << std::endl;
-    int sock = socket(d, t, 0);
+    // DOUT() << "create asocket for: " << d << ", " << t << "..." << std::endl;
+    t_fd sock = socket(d, t, 0);
     if (sock == -1) {
         throw std::runtime_error("failed to initialize asocket");
     }
-    DOUT() << "created asocket." << std::endl;
+    // DOUT() << "created asocket." << std::endl;
     fd = sock;
     domain = sdomain;
     type = stype;
@@ -84,7 +84,11 @@ SocketType      ASocket::get_type() const {
     return type;
 }
 
+t_port      ASocket::get_port() const {
+    return port;
+}
+
 void            ASocket::destroy() {
-    DOUT() << "destroying asocket " << fd << ", " << domain << ", " << type << "..." << std::endl;
+    // DOUT() << "destroying asocket " << fd << ", " << domain << ", " << type << "..." << std::endl;
     close(fd);
 }

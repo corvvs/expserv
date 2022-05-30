@@ -29,7 +29,9 @@ ConnectedSocket::ConnectedSocket(
 ConnectedSocket::ConnectedSocket(
     int accepted_fd,
     ListeningSocket& listening_socket
-): ASocket(accepted_fd, listening_socket.get_domain(), listening_socket.get_type()) {}
+): ASocket(accepted_fd, listening_socket.get_domain(), listening_socket.get_type()) {
+    port = listening_socket.get_port();
+}
 
 ConnectedSocket& ConnectedSocket::operator=(const ConnectedSocket& rhs) {
     static_cast<ASocket&>(*this) = static_cast<const ASocket&>(rhs);
@@ -61,6 +63,7 @@ ConnectedSocket*    ConnectedSocket::connect(
     if (::connect(fd, (struct sockaddr*) &sa, sizeof(struct sockaddr_in)) == -1) {
         throw std::runtime_error("failed to connect");
     }
+    sock->port = port;
     return sock;
 }
 
@@ -72,13 +75,16 @@ ssize_t ConnectedSocket::receive(void *buffer, size_t len, int flags) {
     return ::recv(get_fd(), buffer, len, flags);
 }
 
-void    ConnectedSocket::run(EventLoop& loop) {
+void    ConnectedSocket::notify(EventLoop& loop) {
     switch (run_counter) {
         case 0: {
             char buf[N];
             ssize_t receipt = receive(&buf, N, 0);
             if (receipt <= 0) {
-                std::cout << receipt_str << std::endl;
+                std::cout << receipt_str;
+                std::cout << " fd: " << get_fd();
+                std::cout << " port: " << get_port();
+                std::cout << std::endl;
                 receipt_str.clear();
                 loop.preserve_clear(this, SHMT_READ);
                 return;

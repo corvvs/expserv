@@ -33,7 +33,7 @@ public:
     ssize_t receive(void *buffer, size_t len, int flags);
     int get_fd() const;
 
-    void    run(EventLoop& loop);
+    void    notify(EventLoop& loop);
 
 private:
     std::string receipt_str;
