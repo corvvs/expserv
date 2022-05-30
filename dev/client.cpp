@@ -19,7 +19,7 @@ int main() {
             pid = getpid();
             srand(pid);
             // std::cout << "sleep: " << sleeptime << std::endl;
-            ConnectedSocket *sock = ConnectedSocket::connect(SD_IP4, ST_TCP, 8080);
+            ConnectedSocket *sock = ConnectedSocket::connect(SD_IP4, ST_TCP, 8080 + pid % 5);
             // std::cout << "fd: " << sock->get_fd() << std::endl;
             std::stringstream ss;
             ss << "(" << i << ") ";

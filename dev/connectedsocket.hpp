@@ -2,7 +2,7 @@
 # define CONNECTEDSOCKET_HPP
 # include "asocket.hpp"
 # include "isocket.hpp"
-# include <fcntl.h>
+# include "eventloop.hpp"
 
 class ListeningSocket;
 

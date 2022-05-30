@@ -1,6 +1,11 @@
 #ifndef LISTENINGSOCKET_HPP
 # define LISTENINGSOCKET_HPP
+# include "asocket.hpp"
+# include "isocket.hpp"
+# include "eventloop.hpp"
 # include "connectedsocket.hpp"
+
+class ConnectedSocket;
 
 class ListeningSocket: public ASocket, public ISocket {
 private:

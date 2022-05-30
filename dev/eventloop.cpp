@@ -15,6 +15,18 @@ EventLoop::~EventLoop() {
     destroy_all(exception_map);
 }
 
+void    EventLoop::listen(
+    SocketDomain sdomain,
+    SocketType stype,
+    t_port port
+) {
+    ListeningSocket* sock = ListeningSocket::bind(sdomain, stype, port);
+    // std::cout << sock->get_fd() << std::endl;
+    sock->listen(128);
+    watch(sock, SHMT_READ);
+}
+
+
 void    EventLoop::watch(ISocket* socket, SocketHolderMapType map_type) {
     switch (map_type) {
         case SHMT_READ:
@@ -71,34 +83,36 @@ void    EventLoop::loop() {
     fd_set  read_set;
     fd_set  write_set;
     fd_set  exception_set;
-
-    prepare_fd_set(read_map, &read_set);
-    prepare_fd_set(write_map, &write_set);
-    prepare_fd_set(exception_map, &exception_set);
-
     struct timeval tv;
-    tv.tv_sec = 10;
-    tv.tv_usec = 0;
 
-    int max_fd = -1;
-    if (!read_map.empty()) {
-        max_fd = std::max(max_fd, read_map.rbegin()->first);
-    }
-    if (!write_map.empty()) {
-        max_fd = std::max(max_fd, write_map.rbegin()->first);
-    }
-    if (!exception_map.empty()) {
-        max_fd = std::max(max_fd, exception_map.rbegin()->first);
-    }
+    while (1) {
+        prepare_fd_set(read_map, &read_set);
+        prepare_fd_set(write_map, &write_set);
+        prepare_fd_set(exception_map, &exception_set);
 
-    int count = select( max_fd + 1, &read_set, &write_set, &exception_set, &tv);
-    if (count < 0) {
-        throw std::runtime_error("select error");
+        tv.tv_sec = 10;
+        tv.tv_usec = 0;
+
+        int max_fd = -1;
+        if (!read_map.empty()) {
+            max_fd = std::max(max_fd, read_map.rbegin()->first);
+        }
+        if (!write_map.empty()) {
+            max_fd = std::max(max_fd, write_map.rbegin()->first);
+        }
+        if (!exception_map.empty()) {
+            max_fd = std::max(max_fd, exception_map.rbegin()->first);
+        }
+
+        int count = select( max_fd + 1, &read_set, &write_set, &exception_set, &tv);
+        if (count < 0) {
+            throw std::runtime_error("select error");
+        }
+        scan_fd_set(read_map, &read_set);
+        scan_fd_set(write_map, &write_set);
+        scan_fd_set(exception_map, &exception_set);
+        update();
     }
-    scan_fd_set(read_map, &read_set);
-    scan_fd_set(write_map, &write_set);
-    scan_fd_set(exception_map, &exception_set);
-    update();
 }
 
 void    EventLoop::preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to) {

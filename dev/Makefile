@@ -7,6 +7,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
 SRCS_CLIENT		:=	client.cpp asocket.cpp\
+					listeningsocket.cpp\
 					connectedsocket.cpp\
 					eventloop.cpp\
 					test_common.cpp

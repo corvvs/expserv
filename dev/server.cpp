@@ -10,12 +10,12 @@
 #define N 1024
 
 int main() {
-    ListeningSocket* sock = ListeningSocket::bind(SD_IP4, ST_TCP, 8080);
-    std::cout << sock->get_fd() << std::endl;
-    sock->listen(128);
-    EventLoop   loop;
-    loop.watch(sock, SHMT_READ);
-    while (1) {
-        loop.loop();
-    }
+    EventLoop   el;
+
+    el.listen(SD_IP4, ST_TCP, 8080);
+    el.listen(SD_IP4, ST_TCP, 8081);
+    el.listen(SD_IP4, ST_TCP, 8082);
+    el.listen(SD_IP4, ST_TCP, 8083);
+    el.listen(SD_IP4, ST_TCP, 8084);
+    el.loop();
 }

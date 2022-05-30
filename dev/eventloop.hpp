@@ -1,6 +1,8 @@
-#ifndef SOCKETHOLDER_HPP
-# define SOCKETHOLDER_HPP
+#ifndef EVENTLOOP_HPP
+# define EVENTLOOP_HPP
+# include "asocket.hpp"
 # include "isocket.hpp"
+# include "listeningsocket.hpp"
 # include <map>
 # include <vector>
 # include <sys/select.h>
@@ -8,6 +10,7 @@
 # include <sys/types.h>
 # include <errno.h>
 # include <unistd.h>
+# include "socket_type.hpp"
 
 class ISocket;
 
@@ -40,12 +43,20 @@ class EventLoop {
         void    preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to);
         void    update();
 
+        void    unwatch(ISocket* socket, SocketHolderMapType map_type);
+
     public:
         EventLoop();
         ~EventLoop();
 
+
+        void    listen(
+            SocketDomain sdomain,
+            SocketType stype,
+            t_port port
+        );
+
         void    watch(ISocket* socket, SocketHolderMapType map_type);
-        void    unwatch(ISocket* socket, SocketHolderMapType map_type);
 
         void    loop();
 

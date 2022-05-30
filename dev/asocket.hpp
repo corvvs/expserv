@@ -1,31 +1,7 @@
-#ifndef SOCKET_HPP
-# define SOCKET_HPP
-# include <iostream>
-# include <string>
-# include <exception>
-# include <stdexcept>
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
-# include <arpa/inet.h>
-# include <unistd.h>
-# include <netdb.h>
+#ifndef ASOCKET_HPP
+# define ASOCKET_HPP
 # include "test_common.hpp"
-# include "eventloop.hpp"
-
-
-enum SocketDomain {
-    SD_IP4,
-    SD_IP6
-};
-
-enum SocketType {
-    ST_TCP,
-    ST_UDP
-};
-
-typedef uint16_t    t_port;
-typedef uint32_t    t_addressv4;
+# include "socket_type.hpp"
 
 class EventLoop;
 
