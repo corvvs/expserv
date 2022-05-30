@@ -29,7 +29,7 @@ typedef uint32_t    t_addressv4;
 
 class EventLoop;
 
-class Socket {
+class ASocket {
 protected:
     int             fd;
     SocketDomain    domain;
@@ -43,28 +43,28 @@ private:
     // Socketはfactoryメソッドbind, connectおよびインスタンスメソッドacceptによってのみ生成される
 
     // デフォルトコンストラクタは使用禁止(呼び出すと例外を投げる)
-    Socket();
+    ASocket();
 
 protected:
-    Socket(
+    ASocket(
         SocketDomain sdomain,
         SocketType stype
     );
 
-    Socket(
+    ASocket(
         int fd,
         SocketDomain sdomain,
         SocketType stype
     );
 
-    Socket(const Socket& other);
+    ASocket(const ASocket& other);
     void    destroy();
 
 public:
-    virtual ~Socket();
-    Socket& operator=(const Socket& rhs);
+    virtual ~ASocket();
+    ASocket& operator=(const ASocket& rhs);
 
-    int             get_fd() const;
+    virtual int             get_fd() const = 0;
     SocketDomain    get_domain() const;
     SocketType      get_type() const;
 

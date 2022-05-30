@@ -20,10 +20,10 @@ static void cpp_bzero(void *mem, size_t n) {
 ListeningSocket::ListeningSocket(
     SocketDomain sdomain,
     SocketType stype
-): Socket(sdomain, stype) {}
+): ASocket(sdomain, stype) {}
 
 ListeningSocket& ListeningSocket::operator=(const ListeningSocket& rhs) {
-    static_cast<Socket&>(*this) = static_cast<const Socket&>(rhs);
+    static_cast<ASocket&>(*this) = static_cast<const ASocket&>(rhs);
     return *this;
 }
 
@@ -43,16 +43,16 @@ ListeningSocket*    ListeningSocket::bind(
     sa.sin_family = d;
     sa.sin_port = htons(port);
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
-    DOUT() << "binding socket for: " << port << ", " << sa.sin_addr.s_addr << "..." << std::endl;
+    DOUT() << "binding asocket for: " << port << ", " << sa.sin_addr.s_addr << "..." << std::endl;
     if (::bind(fd, (struct sockaddr*) &sa, sizeof(struct sockaddr_in)) == -1) {
-        throw std::runtime_error("failed to bind a socket");
+        throw std::runtime_error("failed to bind a asocket");
     }
-    DOUT() << "bound socket." << std::endl;
+    DOUT() << "bound asocket." << std::endl;
     return sock;
 }
 
 void    ListeningSocket::listen(int backlog) {
-    DOUT() << "making socket listening in backlog: " << backlog << std::endl;
+    DOUT() << "making asocket listening in backlog: " << backlog << std::endl;
     if (::listen(fd, backlog) == -1) {
         throw std::runtime_error("failed to listen");
     }
@@ -85,4 +85,8 @@ void            ListeningSocket::run(EventLoop& loop) {
             return;
         }
     }
+}
+
+int             ListeningSocket::get_fd() const {
+    return fd;
 }

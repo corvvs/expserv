@@ -15,7 +15,7 @@ EventLoop::~EventLoop() {
     destroy_all(exception_map);
 }
 
-void    EventLoop::watch(Socket* socket, SocketHolderMapType map_type) {
+void    EventLoop::watch(ISocket* socket, SocketHolderMapType map_type) {
     switch (map_type) {
         case SHMT_READ:
             read_map[socket->get_fd()] = socket;
@@ -31,7 +31,7 @@ void    EventLoop::watch(Socket* socket, SocketHolderMapType map_type) {
     }
 }
 
-void    EventLoop::unwatch(Socket* socket, SocketHolderMapType map_type) {
+void    EventLoop::unwatch(ISocket* socket, SocketHolderMapType map_type) {
     switch (map_type) {
         case SHMT_READ:
             read_map.erase(socket->get_fd());
@@ -101,7 +101,7 @@ void    EventLoop::loop() {
     update();
 }
 
-void    EventLoop::preserve(Socket* socket, SocketHolderMapType from, SocketHolderMapType to) {
+void    EventLoop::preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to) {
     SocketPreservation  pre = {
         .sock = socket,
         .from = from,
@@ -112,17 +112,17 @@ void    EventLoop::preserve(Socket* socket, SocketHolderMapType from, SocketHold
 
 // 次のselectの前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventLoop::preserve_clear(Socket* socket, SocketHolderMapType from) {
+void    EventLoop::preserve_clear(ISocket* socket, SocketHolderMapType from) {
     preserve(socket, from, SHMT_NONE);
 }
 
 // 次のselectの前に, このソケットを監視対象に追加する
-void    EventLoop::preserve_set(Socket* socket, SocketHolderMapType to) {
+void    EventLoop::preserve_set(ISocket* socket, SocketHolderMapType to) {
     preserve(socket, SHMT_NONE, to);
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
-void    EventLoop::preserve_move(Socket* socket, SocketHolderMapType from, SocketHolderMapType to) {
+void    EventLoop::preserve_move(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to) {
     preserve(socket, from, to);
 }
 

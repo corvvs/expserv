@@ -1,6 +1,6 @@
 #ifndef SOCKETHOLDER_HPP
 # define SOCKETHOLDER_HPP
-# include "socket.hpp"
+# include "isocket.hpp"
 # include <map>
 # include <vector>
 # include <sys/select.h>
@@ -9,7 +9,7 @@
 # include <errno.h>
 # include <unistd.h>
 
-class Socket;
+class ISocket;
 
 enum SocketHolderMapType {
     SHMT_NONE,
@@ -19,14 +19,14 @@ enum SocketHolderMapType {
 };
 
 struct SocketPreservation {
-    Socket* sock;
+    ISocket* sock;
     SocketHolderMapType from;
     SocketHolderMapType to;
 };
 
 class EventLoop {
     public:
-        typedef std::map<int, Socket*>  socket_map;
+        typedef std::map<int, ISocket*>  socket_map;
         typedef std::vector< SocketPreservation > update_queue;
 
     private:
@@ -37,21 +37,21 @@ class EventLoop {
 
         void    prepare_fd_set(socket_map& sockmap, fd_set *sockset);
         void    scan_fd_set(socket_map& sockmap, fd_set *sockset);
-        void    preserve(Socket* socket, SocketHolderMapType from, SocketHolderMapType to);
+        void    preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to);
         void    update();
 
     public:
         EventLoop();
         ~EventLoop();
 
-        void    watch(Socket* socket, SocketHolderMapType map_type);
-        void    unwatch(Socket* socket, SocketHolderMapType map_type);
+        void    watch(ISocket* socket, SocketHolderMapType map_type);
+        void    unwatch(ISocket* socket, SocketHolderMapType map_type);
 
         void    loop();
 
-        void    preserve_clear(Socket* socket, SocketHolderMapType from);
-        void    preserve_set(Socket* socket, SocketHolderMapType to);
-        void    preserve_move(Socket* socket, SocketHolderMapType from, SocketHolderMapType to);
+        void    preserve_clear(ISocket* socket, SocketHolderMapType from);
+        void    preserve_set(ISocket* socket, SocketHolderMapType to);
+        void    preserve_move(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to);
 };
 
 #endif

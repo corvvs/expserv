@@ -1,11 +1,12 @@
 #ifndef CONNECTEDSOCKET_HPP
 # define CONNECTEDSOCKET_HPP
-# include "socket.hpp"
+# include "asocket.hpp"
+# include "isocket.hpp"
 # include <fcntl.h>
 
 class ListeningSocket;
 
-class ConnectedSocket: public Socket {
+class ConnectedSocket: public ASocket, public ISocket {
 private:
     ConnectedSocket();
     ConnectedSocket(
@@ -30,6 +31,7 @@ public:
     );
     ssize_t send(const void *buffer, size_t len, int flags);
     ssize_t receive(void *buffer, size_t len, int flags);
+    int get_fd() const;
 
     void    run(EventLoop& loop);
 

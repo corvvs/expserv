@@ -2,7 +2,7 @@
 # define LISTENINGSOCKET_HPP
 # include "connectedsocket.hpp"
 
-class ListeningSocket: public Socket {
+class ListeningSocket: public ASocket, public ISocket {
 private:
     ListeningSocket();
     ListeningSocket(
@@ -22,6 +22,7 @@ public:
     void                listen(int backlog);
     void                waitAccept();
     ConnectedSocket*    accept();
+    int get_fd() const;
 
     void    run(EventLoop& loop);
 };

@@ -1,12 +1,12 @@
 CXXFLAGS		:=	-Wall -Wextra -Werror -std=c++98 --pedantic -g -fsanitize=address
-SRCS_SERVER		:=	server.cpp socket.cpp\
+SRCS_SERVER		:=	server.cpp asocket.cpp\
 					listeningsocket.cpp\
 					connectedsocket.cpp\
 					eventloop.cpp\
 					test_common.cpp
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
-SRCS_CLIENT		:=	client.cpp socket.cpp\
+SRCS_CLIENT		:=	client.cpp asocket.cpp\
 					connectedsocket.cpp\
 					eventloop.cpp\
 					test_common.cpp

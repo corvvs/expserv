@@ -19,20 +19,20 @@ static void cpp_bzero(void *mem, size_t n) {
     }
 }
 
-ConnectedSocket::ConnectedSocket(const ConnectedSocket& other): Socket(other) {}
+ConnectedSocket::ConnectedSocket(const ConnectedSocket& other): ASocket(other) {}
 
 ConnectedSocket::ConnectedSocket(
         SocketDomain sdomain,
         SocketType stype
-): Socket(sdomain, stype) {}
+): ASocket(sdomain, stype) {}
 
 ConnectedSocket::ConnectedSocket(
     int accepted_fd,
     ListeningSocket& listening_socket
-): Socket(accepted_fd, listening_socket.get_domain(), listening_socket.get_type()) {}
+): ASocket(accepted_fd, listening_socket.get_domain(), listening_socket.get_type()) {}
 
 ConnectedSocket& ConnectedSocket::operator=(const ConnectedSocket& rhs) {
-    static_cast<Socket&>(*this) = static_cast<const Socket&>(rhs);
+    static_cast<ASocket&>(*this) = static_cast<const ASocket&>(rhs);
     return *this;
 }
 
@@ -87,4 +87,8 @@ void    ConnectedSocket::run(EventLoop& loop) {
             return;
         }
     }
+}
+
+int             ConnectedSocket::get_fd() const {
+    return fd;
 }

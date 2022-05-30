@@ -1,4 +1,4 @@
-#include "socket.hpp"
+#include "asocket.hpp"
 
 static int sockdomain(SocketDomain d) {
     switch (d) {
@@ -7,7 +7,7 @@ static int sockdomain(SocketDomain d) {
     case SD_IP6:
         return AF_INET6;
     default:
-        throw std::runtime_error("unexpected socket domain");
+        throw std::runtime_error("unexpected asocket domain");
     }
 }
 
@@ -18,33 +18,33 @@ static int socktype(SocketType t) {
     case ST_UDP:
         return SOCK_DGRAM;
     default:
-        throw std::runtime_error("unexpected socket type");
+        throw std::runtime_error("unexpected asocket type");
     }
 }
 
-Socket::Socket() {
+ASocket::ASocket() {
     throw std::runtime_error("forbidden");
 }
 
-Socket::Socket(
+ASocket::ASocket(
     SocketDomain sdomain,
     SocketType stype
 ): holding(false), run_counter(0) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
-    DOUT() << "create socket for: " << d << ", " << t << "..." << std::endl;
+    DOUT() << "create asocket for: " << d << ", " << t << "..." << std::endl;
     int sock = socket(d, t, 0);
     if (sock == -1) {
-        throw std::runtime_error("failed to initialize socket");
+        throw std::runtime_error("failed to initialize asocket");
     }
-    DOUT() << "created socket." << std::endl;
+    DOUT() << "created asocket." << std::endl;
     fd = sock;
     domain = sdomain;
     type = stype;
 }
 
-Socket::Socket(
+ASocket::ASocket(
     int sock_fd,
     SocketDomain sdomain,
     SocketType stype
@@ -53,42 +53,38 @@ Socket::Socket(
     type = stype;
 }
 
-Socket::Socket(const Socket& other) {
+ASocket::ASocket(const ASocket& other) {
     *this = other;
 }
 
-Socket& Socket::operator=(const Socket& rhs) {
+ASocket& ASocket::operator=(const ASocket& rhs) {
     if (this != &rhs) {
         fd = rhs.fd;
         domain = rhs.domain;
         type = rhs.type;
         if (rhs.holding) {
             holding = true;
-            const_cast<Socket&>(rhs).holding = false;
+            const_cast<ASocket&>(rhs).holding = false;
         }
     }
     return *this;
 }
 
-Socket::~Socket() {
+ASocket::~ASocket() {
     if (holding) {
         destroy();
     }
 }
 
-int             Socket::get_fd() const {
-    return fd;
-}
-
-SocketDomain    Socket::get_domain() const {
+SocketDomain    ASocket::get_domain() const {
     return domain;
 }
 
-SocketType      Socket::get_type() const {
+SocketType      ASocket::get_type() const {
     return type;
 }
 
-void            Socket::destroy() {
-    DOUT() << "destroying socket " << fd << ", " << domain << ", " << type << "..." << std::endl;
+void            ASocket::destroy() {
+    DOUT() << "destroying asocket " << fd << ", " << domain << ", " << type << "..." << std::endl;
     close(fd);
 }
