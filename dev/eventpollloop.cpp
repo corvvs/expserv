@@ -68,8 +68,7 @@ void    EventPollLoop::preserve_move(ISocket* socket, SocketHolderMapType from, 
 }
 
 t_poll_eventmask    EventPollLoop::mask(SocketHolderMapType t) {
-    switch (t)
-    {
+    switch (t) {
     case SHMT_READ:
         return POLLIN;
     case SHMT_WRITE:

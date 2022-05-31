@@ -2,6 +2,7 @@
 #include "connectedsocket.hpp"
 #include "eventselectloop.hpp"
 #include "eventpollloop.hpp"
+#include "eventkqueueloop.hpp"
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -13,7 +14,8 @@
 
 int main() {
     // IPanopticon *p = new EventSelectLoop();
-    IPanopticon *p = new EventPollLoop();
+    // IPanopticon *p = new EventPollLoop();
+    IPanopticon *p = new EventKqueueLoop();
 
     p->listen(SD_IP4, ST_TCP, 8080);
     p->listen(SD_IP4, ST_TCP, 8081);
