@@ -3,7 +3,7 @@
 # include "test_common.hpp"
 # include "socket_type.hpp"
 
-class EventLoop;
+class IPanopticon;
 
 class ASocket {
 protected:
@@ -46,7 +46,7 @@ public:
     SocketType      get_type() const;
     t_port          get_port() const;
 
-    virtual void    notify(EventLoop& loop) = 0;
+    virtual void    notify(IPanopticon& loop) = 0;
 };
 
 #endif

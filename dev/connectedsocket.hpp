@@ -2,7 +2,7 @@
 # define CONNECTEDSOCKET_HPP
 # include "asocket.hpp"
 # include "isocket.hpp"
-# include "eventloop.hpp"
+# include "ipanopticon.hpp"
 
 class ListeningSocket;
 
@@ -14,7 +14,7 @@ private:
         SocketType stype
     );
     ConnectedSocket(
-        int fd,
+        t_fd fd,
         ListeningSocket& listening
     );
 
@@ -33,7 +33,7 @@ public:
     ssize_t receive(void *buffer, size_t len, int flags);
     int get_fd() const;
 
-    void    notify(EventLoop& loop);
+    void    notify(IPanopticon& loop);
 
 private:
     std::string receipt_str;

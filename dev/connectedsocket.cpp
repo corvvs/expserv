@@ -27,7 +27,7 @@ ConnectedSocket::ConnectedSocket(
 ): ASocket(sdomain, stype) {}
 
 ConnectedSocket::ConnectedSocket(
-    int accepted_fd,
+    t_fd accepted_fd,
     ListeningSocket& listening_socket
 ): ASocket(accepted_fd, listening_socket.get_domain(), listening_socket.get_type()) {
     port = listening_socket.get_port();
@@ -45,7 +45,7 @@ ConnectedSocket*    ConnectedSocket::connect(
 ) {
 
     ConnectedSocket* sock = new ConnectedSocket(sdomain, stype);
-    int fd = sock->get_fd();
+    t_fd fd = sock->get_fd();
 
     struct sockaddr_in sa;
     cpp_bzero(&sa, sizeof(sa));
@@ -75,7 +75,7 @@ ssize_t ConnectedSocket::receive(void *buffer, size_t len, int flags) {
     return ::recv(get_fd(), buffer, len, flags);
 }
 
-void    ConnectedSocket::notify(EventLoop& loop) {
+void    ConnectedSocket::notify(IPanopticon& loop) {
     switch (run_counter) {
         case 0: {
             char buf[N];
@@ -86,11 +86,16 @@ void    ConnectedSocket::notify(EventLoop& loop) {
                 std::cout << " port: " << get_port();
                 std::cout << std::endl;
                 receipt_str.clear();
+
                 loop.preserve_clear(this, SHMT_READ);
+                run_counter++;
                 return;
             }
             receipt_str += std::string(buf, receipt);
             return;
+        }
+        case 1: {
+            // レスポンス返す処理
         }
     }
 }

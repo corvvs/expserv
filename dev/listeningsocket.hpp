@@ -2,7 +2,7 @@
 # define LISTENINGSOCKET_HPP
 # include "asocket.hpp"
 # include "isocket.hpp"
-# include "eventloop.hpp"
+# include "ipanopticon.hpp"
 # include "connectedsocket.hpp"
 
 class ConnectedSocket;
@@ -27,9 +27,9 @@ public:
     void                listen(int backlog);
     void                waitAccept();
     ConnectedSocket*    accept();
-    int get_fd() const;
+    t_fd                get_fd() const;
 
-    void    notify(EventLoop& loop);
+    void    notify(IPanopticon& loop);
 };
 
 #endif

@@ -45,7 +45,7 @@ ASocket::ASocket(
 }
 
 ASocket::ASocket(
-    int sock_fd,
+    t_fd sock_fd,
     SocketDomain sdomain,
     SocketType stype
 ): fd(sock_fd), holding(true), run_counter(0) {

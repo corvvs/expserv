@@ -27,6 +27,21 @@ typedef int	        t_fd;
 typedef uint16_t    t_port;
 typedef uint32_t    t_addressv4;
 
-class EventLoop;
+enum SocketHolderMapType {
+    SHMT_NONE,
+    SHMT_READ,
+    SHMT_WRITE,
+    SHMT_EXCEPTION
+};
+
+class ISocket;
+
+struct SocketPreservation {
+    ISocket* sock;
+    SocketHolderMapType from;
+    SocketHolderMapType to;
+};
+
+class EventSelectLoop;
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef EVENTLOOP_HPP
-# define EVENTLOOP_HPP
+#ifndef EVENTSELECTLOOP_HPP
+# define EVENTSELECTLOOP_HPP
 # include "asocket.hpp"
 # include "isocket.hpp"
 # include "listeningsocket.hpp"
@@ -11,28 +11,14 @@
 # include <errno.h>
 # include <unistd.h>
 # include "socket_type.hpp"
+# include "ipanopticon.hpp"
 
 class ISocket;
 
-enum SocketHolderMapType {
-    SHMT_NONE,
-    SHMT_READ,
-    SHMT_WRITE,
-    SHMT_EXCEPTION
-};
-
-struct SocketPreservation {
-    ISocket* sock;
-    SocketHolderMapType from;
-    SocketHolderMapType to;
-};
-
-class EventLoop {
-    public:
+class EventSelectLoop: public IPanopticon {
+    private:
         typedef std::map<t_fd, ISocket*>            socket_map;
         typedef std::vector< SocketPreservation >   update_queue;
-
-    private:
         socket_map                      read_map;
         socket_map                      write_map;
         socket_map                      exception_map;
@@ -43,12 +29,14 @@ class EventLoop {
         void    preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to);
         void    update();
 
+        void    watch(ISocket* socket, SocketHolderMapType map_type);
         void    unwatch(ISocket* socket, SocketHolderMapType map_type);
 
-    public:
-        EventLoop();
-        ~EventLoop();
+        void    destroy_all(socket_map &m);
 
+    public:
+        EventSelectLoop();
+        ~EventSelectLoop();
 
         void    listen(
             SocketDomain sdomain,
@@ -56,10 +44,7 @@ class EventLoop {
             t_port port
         );
 
-        void    watch(ISocket* socket, SocketHolderMapType map_type);
-
         void    loop();
-
         void    preserve_clear(ISocket* socket, SocketHolderMapType from);
         void    preserve_set(ISocket* socket, SocketHolderMapType to);
         void    preserve_move(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to);

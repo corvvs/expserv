@@ -1,13 +1,12 @@
 #ifndef ISOCKET_HPP
 # define ISOCKET_HPP
-
-class EventLoop;
+# include "ipanopticon.hpp"
 
 class ISocket {
 public:
     virtual         ~ISocket() {};
-    virtual int     get_fd() const = 0;
-    virtual void    notify(EventLoop& loop) = 0;
+    virtual t_fd    get_fd() const = 0;
+    virtual void    notify(IPanopticon& loop) = 0;
 };
 
 #endif
