@@ -45,11 +45,13 @@ void    EventKqueueLoop::loop() {
     while (1) {
         update();
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
+        std::cout << "[S]loop: " << count << std::endl;
         for (int i = 0; i < count; i++) {
             int fd = evlist[i].ident;
             ISocket* sock = sockmap[fd];
             sock->notify(*this);
         }
+        std::cout << "[S]loop: end" << std::endl;
     }
 }
 
@@ -85,7 +87,6 @@ void    EventKqueueLoop::update() {
         t_fd        fd = sock->get_fd();
         if (it->to == SHMT_NONE) {
             // std::cout << "clearing " << sock->get_fd() << std::endl;
-            // EV_SET(&*changelist.rbegin(), sock->get_fd(), filter(it->from), EV_DELETE, 0, 0, NULL);
             sockmap.erase(fd);
             delete sock;
         } else {

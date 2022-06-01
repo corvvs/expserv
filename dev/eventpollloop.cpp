@@ -23,15 +23,29 @@ void    EventPollLoop::listen(
 void    EventPollLoop::loop() {
     while (1) {
         update();
-        // std::cout << "polling..." << std::endl;
-        int count = poll(&*fds.begin(), nfds, 10 * 1000);
+        std::cout << "[S] polling count: " << nfds << std::endl;
+
+        std::cout << "[S]";
+        for (fd_vector::iterator it = fds.begin(); it != fds.end(); it++) {
+            std::cout << " ";
+            if (it->fd >= 0) {
+                std::cout << it->fd;
+            } else {
+                std::cout << "xx";
+            }
+            std::cout << ":" << it->events;
+        }
+        std::cout << std::endl;
+
+        int count = poll(&*fds.begin(), fds.size(), 10 * 1000);
         // std::cout << "polled. " << count << std::endl;
         if (count < 0) {
             throw std::runtime_error("poll error");
         }
         for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
             int i = indexmap[it->first];
-            if (fds[i].revents & fds[i].events) {
+            if (fds[i].fd >= 0 && fds[i].revents) {
+                std::cout << "[S]FD-" << it->first << ": revents: " << fds[i].revents << std::endl;
                 it->second->notify(*this);
             }
         }
@@ -86,7 +100,7 @@ void    EventPollLoop::update() {
     EventPollLoop::update_queue::iterator   it;
     for (it = clearqueue.begin(); it != clearqueue.end(); it++) {
         ISocket* sock = it->sock;
-        // std::cout << "clearing " << sock->get_fd() << std::endl;
+        std::cout << "[S]FD-" << sock->get_fd() << ": clearing" << std::endl;
         int i = indexmap[sock->get_fd()];
         fds[i].fd = -1;
         sockmap.erase(sock->get_fd());
@@ -97,18 +111,17 @@ void    EventPollLoop::update() {
     }
     for (it = movequeue.begin(); it != movequeue.end(); it++) {
         ISocket* sock = it->sock;
-        // std::cout << "moving " << sock->get_fd() << std::endl;
+        std::cout << "[S]FD-" << sock->get_fd() << ": moving" << std::endl;
         int i = indexmap[sock->get_fd()];
         fds[i].events = mask(it->to);
     }
     for (it = setqueue.begin(); it != setqueue.end(); it++) {
         ISocket* sock = it->sock;
-        // std::cout << "setting " << sock->get_fd() << std::endl;
+        std::cout << "[S]FD-" << sock->get_fd() << ": setting" << std::endl;
         int i;
         if (gapset.empty()) {
-            pollfd p = {
-                .fd = sock->get_fd(),
-            };
+            pollfd p = {};
+            p.fd = sock->get_fd();
             i = fds.size();
             fds.push_back(p);
         } else {

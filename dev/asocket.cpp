@@ -29,7 +29,7 @@ ASocket::ASocket() {
 ASocket::ASocket(
     SocketDomain sdomain,
     SocketType stype
-): holding(false), run_counter(0) {
+): dying(false), run_counter(0) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
@@ -48,7 +48,7 @@ ASocket::ASocket(
     t_fd sock_fd,
     SocketDomain sdomain,
     SocketType stype
-): fd(sock_fd), holding(true), run_counter(0) {
+): fd(sock_fd), dying(false), run_counter(0) {
     domain = sdomain;
     type = stype;
 }
@@ -62,18 +62,13 @@ ASocket& ASocket::operator=(const ASocket& rhs) {
         fd = rhs.fd;
         domain = rhs.domain;
         type = rhs.type;
-        if (rhs.holding) {
-            holding = true;
-            const_cast<ASocket&>(rhs).holding = false;
-        }
+        dying = rhs.dying;
     }
     return *this;
 }
 
 ASocket::~ASocket() {
-    if (holding) {
-        destroy();
-    }
+    destroy();
 }
 
 SocketDomain    ASocket::get_domain() const {
@@ -88,7 +83,10 @@ t_port      ASocket::get_port() const {
     return port;
 }
 
+bool      ASocket::get_dying() const {
+    return dying;
+}
+
 void            ASocket::destroy() {
-    // DOUT() << "destroying asocket " << fd << ", " << domain << ", " << type << "..." << std::endl;
     close(fd);
 }

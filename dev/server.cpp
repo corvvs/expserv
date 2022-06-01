@@ -14,8 +14,8 @@
 
 int main() {
     // IPanopticon *p = new EventSelectLoop();
-    // IPanopticon *p = new EventPollLoop();
-    IPanopticon *p = new EventKqueueLoop();
+    IPanopticon *p = new EventPollLoop();
+    // IPanopticon *p = new EventKqueueLoop();
 
     p->listen(SD_IP4, ST_TCP, 8080);
     p->listen(SD_IP4, ST_TCP, 8081);

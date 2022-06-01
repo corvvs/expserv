@@ -11,7 +11,7 @@ protected:
     SocketDomain    domain;
     SocketType      type;
     t_port          port;
-    bool            holding;
+    bool            dying;
 
     int             run_counter;
 
@@ -45,6 +45,7 @@ public:
     SocketDomain    get_domain() const;
     SocketType      get_type() const;
     t_port          get_port() const;
+    bool            get_dying() const;
 
     virtual void    notify(IPanopticon& loop) = 0;
 };
