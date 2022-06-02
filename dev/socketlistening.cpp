@@ -1,6 +1,6 @@
-#include "listeningsocket.hpp"
+#include "socketlistening.hpp"
 
-static int sockdomain(SocketDomain d) {
+static int sockdomain(t_socket_domain d) {
     switch (d) {
     case SD_IP4:
         return AF_INET;
@@ -17,23 +17,23 @@ static void cpp_bzero(void *mem, size_t n) {
     }
 }
 
-ListeningSocket::ListeningSocket(
-    SocketDomain sdomain,
-    SocketType stype
+SocketListening::SocketListening(
+    t_socket_domain sdomain,
+    t_socket_type stype
 ): ASocket(sdomain, stype) {}
 
-ListeningSocket& ListeningSocket::operator=(const ListeningSocket& rhs) {
+SocketListening& SocketListening::operator=(const SocketListening& rhs) {
     static_cast<ASocket&>(*this) = static_cast<const ASocket&>(rhs);
     return *this;
 }
 
-ListeningSocket*    ListeningSocket::bind(
-    SocketDomain sdomain,
-    SocketType stype,
+SocketListening*    SocketListening::bind(
+    t_socket_domain sdomain,
+    t_socket_type stype,
     t_port port
 ) {
 
-    ListeningSocket* sock = new ListeningSocket(sdomain, stype);
+    SocketListening* sock = new SocketListening(sdomain, stype);
     sock->waitAccept();
     t_fd fd = sock->get_fd();
 
@@ -52,7 +52,7 @@ ListeningSocket*    ListeningSocket::bind(
     return sock;
 }
 
-void    ListeningSocket::listen(int backlog) {
+void    SocketListening::listen(int backlog) {
     // DOUT() << "making asocket listening in backlog: " << backlog << std::endl;
     if (::listen(fd, backlog) == -1) {
         throw std::runtime_error("failed to listen");
@@ -60,7 +60,7 @@ void    ListeningSocket::listen(int backlog) {
     DOUT() << "now listening..." << std::endl;
 }
 
-void            ListeningSocket::waitAccept() {
+void            SocketListening::waitAccept() {
     int rv;
     rv = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (rv < 0) {
@@ -69,19 +69,19 @@ void            ListeningSocket::waitAccept() {
 }
 
 
-ConnectedSocket*    ListeningSocket::accept() {
+SocketConnected*    SocketListening::accept() {
     t_fd accepted_fd = ::accept(fd, NULL, NULL);
     // DOUT() << "accepted" << std::endl;
     if (accepted_fd < 0) {
         throw std::runtime_error("failed to accept");
     }
-    return new ConnectedSocket(accepted_fd, *this);
+    return new SocketConnected(accepted_fd, *this);
 }
 
-void            ListeningSocket::notify(IPanopticon& loop) {
+void            SocketListening::notify(IPanopticon& loop) {
     (void) loop;
 }
 
-int             ListeningSocket::get_fd() const {
+int             SocketListening::get_fd() const {
     return fd;
 }

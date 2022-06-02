@@ -2,7 +2,7 @@
 # define EVENTSELECTLOOP_HPP
 # include "asocket.hpp"
 # include "isocketlike.hpp"
-# include "listeningsocket.hpp"
+# include "socketlistening.hpp"
 # include <map>
 # include <vector>
 # include <sys/select.h>
@@ -18,7 +18,7 @@ class ISocketLike;
 class EventSelectLoop: public IPanopticon {
     private:
         typedef std::map<t_fd, ISocketLike*>            socket_map;
-        typedef std::vector< SocketPreservation >   update_queue;
+        typedef std::vector< t_socket_reservation >   update_queue;
         socket_map                      read_map;
         socket_map                      write_map;
         socket_map                      exception_map;
@@ -26,11 +26,11 @@ class EventSelectLoop: public IPanopticon {
 
         void    prepare_fd_set(socket_map& sockmap, fd_set *sockset);
         void    scan_fd_set(socket_map& sockmap, fd_set *sockset);
-        void    preserve(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to);
+        void    preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
         void    update();
 
-        void    watch(ISocketLike* socket, SocketHolderMapType map_type);
-        void    unwatch(ISocketLike* socket, SocketHolderMapType map_type);
+        void    watch(ISocketLike* socket, t_socket_operation map_type);
+        void    unwatch(ISocketLike* socket, t_socket_operation map_type);
 
         void    destroy_all(socket_map &m);
 
@@ -39,9 +39,9 @@ class EventSelectLoop: public IPanopticon {
         ~EventSelectLoop();
 
         void    loop();
-        void    preserve_clear(ISocketLike* socket, SocketHolderMapType from);
-        void    preserve_set(ISocketLike* socket, SocketHolderMapType to);
-        void    preserve_move(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to);
+        void    preserve_clear(ISocketLike* socket, t_socket_operation from);
+        void    preserve_set(ISocketLike* socket, t_socket_operation to);
+        void    preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
 };
 
 #endif

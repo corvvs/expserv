@@ -1,7 +1,7 @@
 CXXFLAGS		:=	-Wall -Wextra -Werror -std=c++98 --pedantic -g -fsanitize=address
 SRCS_SERVER		:=	server.cpp asocket.cpp\
-					listeningsocket.cpp\
-					connectedsocket.cpp\
+					socketlistening.cpp\
+					socketconnected.cpp\
 					eventselectloop.cpp\
 					eventpollloop.cpp\
 					eventkqueueloop.cpp\
@@ -10,8 +10,8 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
 SRCS_CLIENT		:=	client.cpp asocket.cpp\
-					listeningsocket.cpp\
-					connectedsocket.cpp\
+					socketlistening.cpp\
+					socketconnected.cpp\
 					eventselectloop.cpp\
 					test_common.cpp
 OBJS_CLIENT		:=	$(SRCS_CLIENT:.cpp=.o)

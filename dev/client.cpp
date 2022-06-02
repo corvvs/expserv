@@ -1,9 +1,9 @@
-#include "connectedsocket.hpp"
+#include "socketconnected.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 
-void sendss(int i, ConnectedSocket* sock, std::stringstream& ss) {
+void sendss(int i, SocketConnected* sock, std::stringstream& ss) {
     usleep(rand() / 2000);
     std::string s = ss.str();
     sock->send(s.c_str(), s.length(), 0);
@@ -20,7 +20,7 @@ int main() {
             pid = getpid();
             srand(pid);
             // std::cout << "sleep: " << sleeptime << std::endl;
-            ConnectedSocket *sock = ConnectedSocket::connect(SD_IP4, ST_TCP, 8080 + pid % 5);
+            SocketConnected *sock = SocketConnected::connect(SD_IP4, ST_TCP, 8080 + pid % 5);
             // std::cout << "fd: " << sock->get_fd() << std::endl;
             std::stringstream ss;
             ss << i << ": ";

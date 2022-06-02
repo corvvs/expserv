@@ -1,8 +1,8 @@
-#include "connectedsocket.hpp"
-#include "listeningsocket.hpp"
+#include "socketconnected.hpp"
+#include "socketlistening.hpp"
 #define N 1024
 
-static int sockdomain(SocketDomain d) {
+static int sockdomain(t_socket_domain d) {
     switch (d) {
     case SD_IP4:
         return AF_INET;
@@ -19,32 +19,32 @@ static void cpp_bzero(void *mem, size_t n) {
     }
 }
 
-ConnectedSocket::ConnectedSocket(const ConnectedSocket& other): ASocket(other) {}
+SocketConnected::SocketConnected(const SocketConnected& other): ASocket(other) {}
 
-ConnectedSocket::ConnectedSocket(
-        SocketDomain sdomain,
-        SocketType stype
+SocketConnected::SocketConnected(
+        t_socket_domain sdomain,
+        t_socket_type stype
 ): ASocket(sdomain, stype) {}
 
-ConnectedSocket::ConnectedSocket(
+SocketConnected::SocketConnected(
     t_fd accepted_fd,
-    ListeningSocket& listening_socket
+    SocketListening& listening_socket
 ): ASocket(accepted_fd, listening_socket.get_domain(), listening_socket.get_type()) {
     port = listening_socket.get_port();
 }
 
-ConnectedSocket& ConnectedSocket::operator=(const ConnectedSocket& rhs) {
+SocketConnected& SocketConnected::operator=(const SocketConnected& rhs) {
     static_cast<ASocket&>(*this) = static_cast<const ASocket&>(rhs);
     return *this;
 }
 
-ConnectedSocket*    ConnectedSocket::connect(
-    SocketDomain sdomain,
-    SocketType stype,
+SocketConnected*    SocketConnected::connect(
+    t_socket_domain sdomain,
+    t_socket_type stype,
     t_port port
 ) {
 
-    ConnectedSocket* sock = new ConnectedSocket(sdomain, stype);
+    SocketConnected* sock = new SocketConnected(sdomain, stype);
     t_fd fd = sock->get_fd();
 
     struct sockaddr_in sa;
@@ -67,15 +67,15 @@ ConnectedSocket*    ConnectedSocket::connect(
     return sock;
 }
 
-ssize_t ConnectedSocket::send(const void *buffer, size_t len, int flags) {
+ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) {
     return ::send(get_fd(), buffer, len, flags);
 }
 
-ssize_t ConnectedSocket::receive(void *buffer, size_t len, int flags) {
+ssize_t SocketConnected::receive(void *buffer, size_t len, int flags) {
     return ::recv(get_fd(), buffer, len, flags);
 }
 
-void    ConnectedSocket::notify(IPanopticon& loop) {
+void    SocketConnected::notify(IPanopticon& loop) {
     std::cout << "[S]" << fd << " rc: " << run_counter << std::endl;
     if (dying) { return; }
     switch (run_counter) {
@@ -116,6 +116,6 @@ void    ConnectedSocket::notify(IPanopticon& loop) {
     }
 }
 
-int             ConnectedSocket::get_fd() const {
+int             SocketConnected::get_fd() const {
     return fd;
 }

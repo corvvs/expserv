@@ -1,6 +1,6 @@
 #include "asocket.hpp"
 
-static int sockdomain(SocketDomain d) {
+static int sockdomain(t_socket_domain d) {
     switch (d) {
     case SD_IP4:
         return AF_INET;
@@ -11,7 +11,7 @@ static int sockdomain(SocketDomain d) {
     }
 }
 
-static int socktype(SocketType t) {
+static int socktype(t_socket_type t) {
     switch (t) {
     case ST_TCP:
         return SOCK_STREAM;
@@ -27,8 +27,8 @@ ASocket::ASocket() {
 }
 
 ASocket::ASocket(
-    SocketDomain sdomain,
-    SocketType stype
+    t_socket_domain sdomain,
+    t_socket_type stype
 ): dying(false), run_counter(0) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
@@ -46,8 +46,8 @@ ASocket::ASocket(
 
 ASocket::ASocket(
     t_fd sock_fd,
-    SocketDomain sdomain,
-    SocketType stype
+    t_socket_domain sdomain,
+    t_socket_type stype
 ): fd(sock_fd), dying(false), run_counter(0) {
     domain = sdomain;
     type = stype;
@@ -71,11 +71,11 @@ ASocket::~ASocket() {
     destroy();
 }
 
-SocketDomain    ASocket::get_domain() const {
+t_socket_domain    ASocket::get_domain() const {
     return domain;
 }
 
-SocketType      ASocket::get_type() const {
+t_socket_type      ASocket::get_type() const {
     return type;
 }
 

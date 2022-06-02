@@ -8,8 +8,8 @@ class IPanopticon;
 class ASocket {
 protected:
     t_fd            fd;
-    SocketDomain    domain;
-    SocketType      type;
+    t_socket_domain    domain;
+    t_socket_type      type;
     t_port          port;
     bool            dying;
 
@@ -24,14 +24,14 @@ private:
 
 protected:
     ASocket(
-        SocketDomain sdomain,
-        SocketType stype
+        t_socket_domain sdomain,
+        t_socket_type stype
     );
 
     ASocket(
         int fd,
-        SocketDomain sdomain,
-        SocketType stype
+        t_socket_domain sdomain,
+        t_socket_type stype
     );
 
     ASocket(const ASocket& other);
@@ -42,8 +42,8 @@ public:
     ASocket& operator=(const ASocket& rhs);
 
     virtual int     get_fd() const = 0;
-    SocketDomain    get_domain() const;
-    SocketType      get_type() const;
+    t_socket_domain    get_domain() const;
+    t_socket_type      get_type() const;
     t_port          get_port() const;
     bool            get_dying() const;
 

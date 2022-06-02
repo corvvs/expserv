@@ -5,10 +5,10 @@ Channel::Channel() {
 }
 
 Channel::Channel(
-    SocketDomain sdomain,
-    SocketType stype,
+    t_socket_domain sdomain,
+    t_socket_type stype,
     t_port port
-): sock(ListeningSocket::bind(sdomain, stype, port)) {
+): sock(SocketListening::bind(sdomain, stype, port)) {
     sock->listen(128);
 }
 
@@ -17,8 +17,8 @@ Channel::~Channel() {
 }
 
 Channel* Channel::listen(
-    SocketDomain sdomain,
-    SocketType stype,
+    t_socket_domain sdomain,
+    t_socket_type stype,
     t_port port
 ) {
     return new Channel(sdomain, stype, port);
@@ -30,6 +30,6 @@ t_fd    Channel::get_fd() const {
 
 
 void    Channel::notify(IPanopticon& loop) {
-    ConnectedSocket* accepted = sock->accept();
+    SocketConnected* accepted = sock->accept();
     loop.preserve_set(accepted, SHMT_READ);
 }

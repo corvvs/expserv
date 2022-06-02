@@ -18,7 +18,7 @@ EventKqueueLoop::~EventKqueueLoop() {
     }
 }
 
-EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(SocketHolderMapType t) {
+EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_socket_operation t) {
     switch (t) {
     case SHMT_READ:
         return EVFILT_READ;
@@ -45,24 +45,24 @@ void    EventKqueueLoop::loop() {
     }
 }
 
-void    EventKqueueLoop::preserve(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to) {
-    SocketPreservation  pre = {socket, from, to};
+void    EventKqueueLoop::preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+    t_socket_reservation  pre = {socket, from, to};
     upqueue.push_back(pre);
 }
 
 // 次のselectの前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventKqueueLoop::preserve_clear(ISocketLike* socket, SocketHolderMapType from) {
+void    EventKqueueLoop::preserve_clear(ISocketLike* socket, t_socket_operation from) {
     preserve(socket, from, SHMT_NONE);
 }
 
 // 次のselectの前に, このソケットを監視対象に追加する
-void    EventKqueueLoop::preserve_set(ISocketLike* socket, SocketHolderMapType to) {
+void    EventKqueueLoop::preserve_set(ISocketLike* socket, t_socket_operation to) {
     preserve(socket, SHMT_NONE, to);
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
-void    EventKqueueLoop::preserve_move(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to) {
+void    EventKqueueLoop::preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     preserve(socket, from, to);
 }
 

@@ -13,12 +13,12 @@
 # include <netdb.h>
 # include <fcntl.h>
 
-enum SocketDomain {
+enum t_socket_domain {
     SD_IP4,
     SD_IP6
 };
 
-enum SocketType {
+enum t_socket_type {
     ST_TCP,
     ST_UDP
 };
@@ -27,7 +27,7 @@ typedef int	        t_fd;
 typedef uint16_t    t_port;
 typedef uint32_t    t_addressv4;
 
-enum SocketHolderMapType {
+enum t_socket_operation {
     SHMT_NONE,
     SHMT_READ,
     SHMT_WRITE,
@@ -36,10 +36,10 @@ enum SocketHolderMapType {
 
 class ISocketLike;
 
-struct SocketPreservation {
+struct t_socket_reservation {
     ISocketLike* sock;
-    SocketHolderMapType from;
-    SocketHolderMapType to;
+    t_socket_operation from;
+    t_socket_operation to;
 };
 
 class EventSelectLoop;
