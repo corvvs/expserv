@@ -78,10 +78,6 @@ SocketConnected*    SocketListening::accept() {
     return new SocketConnected(accepted_fd, *this);
 }
 
-void            SocketListening::notify(IPanopticon& loop) {
-    (void) loop;
-}
-
 int             SocketListening::get_fd() const {
     return fd;
 }

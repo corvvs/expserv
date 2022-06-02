@@ -29,7 +29,7 @@ ASocket::ASocket() {
 ASocket::ASocket(
     t_socket_domain sdomain,
     t_socket_type stype
-): dying(false), run_counter(0) {
+): dying(false) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
@@ -48,7 +48,7 @@ ASocket::ASocket(
     t_fd sock_fd,
     t_socket_domain sdomain,
     t_socket_type stype
-): fd(sock_fd), dying(false), run_counter(0) {
+): fd(sock_fd), dying(false) {
     domain = sdomain;
     type = stype;
 }

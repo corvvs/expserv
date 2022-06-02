@@ -13,8 +13,6 @@ protected:
     t_port          port;
     bool            dying;
 
-    int             run_counter;
-
 private:
     // コンストラクタの直接呼び出しは禁止
     // Socketはfactoryメソッドbind, connectおよびインスタンスメソッドacceptによってのみ生成される
@@ -46,8 +44,6 @@ public:
     t_socket_type      get_type() const;
     t_port          get_port() const;
     bool            get_dying() const;
-
-    virtual void    notify(IPanopticon& loop) = 0;
 };
 
 #endif

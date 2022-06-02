@@ -5,6 +5,7 @@
 # include "socketlistening.hpp"
 # include "isocketlike.hpp"
 # include "ipanopticon.hpp"
+# include "connection.hpp"
 
 class Channel: public ISocketLike {
 public:

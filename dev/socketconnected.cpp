@@ -1,6 +1,5 @@
 #include "socketconnected.hpp"
 #include "socketlistening.hpp"
-#define N 1024
 
 static int sockdomain(t_socket_domain d) {
     switch (d) {
@@ -73,47 +72,6 @@ ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) {
 
 ssize_t SocketConnected::receive(void *buffer, size_t len, int flags) {
     return ::recv(get_fd(), buffer, len, flags);
-}
-
-void    SocketConnected::notify(IPanopticon& loop) {
-    std::cout << "[S]" << fd << " rc: " << run_counter << std::endl;
-    if (dying) { return; }
-    switch (run_counter) {
-        case 0: {
-            char buf[N];
-            ssize_t receipt = receive(&buf, N, 0);
-            if (receipt <= 0) {
-                std::cout << "[S]" << receipt_str;
-                std::cout << " fd: " << get_fd();
-                std::cout << " port: " << get_port();
-                std::cout << std::endl;
-                receipt_str.clear();
-
-                // loop.preserve_clear(this, SHMT_WRITE);
-                loop.preserve_move(this, SHMT_READ, SHMT_WRITE);
-                run_counter++;
-                return;
-            }
-            receipt_str += std::string(buf, receipt);
-            // std::cout << "S[fd: " << get_fd();
-            // std::cout << " port: " << get_port();
-            // std::cout << "] " << std::string(buf, receipt);
-            // std::cout << std::endl;
-            return;
-        }
-        case 1: {
-            // レスポンス返す処理
-            const std::string rs = "hello back";
-            send(rs.c_str(), rs.length(), 0);
-            loop.preserve_clear(this, SHMT_WRITE);
-            dying = true;
-            run_counter++;
-            return;
-        }
-        default:
-            std::cout << "FAIL: " << fd << std::endl;
-            throw std::runtime_error("????");
-    }
 }
 
 int             SocketConnected::get_fd() const {
