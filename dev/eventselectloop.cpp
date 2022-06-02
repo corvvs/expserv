@@ -15,17 +15,7 @@ EventSelectLoop::~EventSelectLoop() {
     destroy_all(exception_map);
 }
 
-void    EventSelectLoop::listen(
-    SocketDomain sdomain,
-    SocketType stype,
-    t_port port
-) {
-    ListeningSocket* sock = ListeningSocket::bind(sdomain, stype, port);
-    sock->listen(128);
-    preserve_set(sock, SHMT_READ);
-}
-
-void    EventSelectLoop::watch(ISocket* socket, SocketHolderMapType map_type) {
+void    EventSelectLoop::watch(ISocketLike* socket, SocketHolderMapType map_type) {
     switch (map_type) {
         case SHMT_READ:
             read_map[socket->get_fd()] = socket;
@@ -41,7 +31,7 @@ void    EventSelectLoop::watch(ISocket* socket, SocketHolderMapType map_type) {
     }
 }
 
-void    EventSelectLoop::unwatch(ISocket* socket, SocketHolderMapType map_type) {
+void    EventSelectLoop::unwatch(ISocketLike* socket, SocketHolderMapType map_type) {
     switch (map_type) {
         case SHMT_READ:
             read_map.erase(socket->get_fd());
@@ -113,24 +103,24 @@ void    EventSelectLoop::loop() {
     }
 }
 
-void    EventSelectLoop::preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to) {
+void    EventSelectLoop::preserve(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to) {
     SocketPreservation  pre = {socket, from, to};
     up_queue.push_back(pre);
 }
 
 // 次のselectの前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventSelectLoop::preserve_clear(ISocket* socket, SocketHolderMapType from) {
+void    EventSelectLoop::preserve_clear(ISocketLike* socket, SocketHolderMapType from) {
     preserve(socket, from, SHMT_NONE);
 }
 
 // 次のselectの前に, このソケットを監視対象に追加する
-void    EventSelectLoop::preserve_set(ISocket* socket, SocketHolderMapType to) {
+void    EventSelectLoop::preserve_set(ISocketLike* socket, SocketHolderMapType to) {
     preserve(socket, SHMT_NONE, to);
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
-void    EventSelectLoop::preserve_move(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to) {
+void    EventSelectLoop::preserve_move(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to) {
     preserve(socket, from, to);
 }
 

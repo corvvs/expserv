@@ -34,10 +34,10 @@ enum SocketHolderMapType {
     SHMT_EXCEPTION
 };
 
-class ISocket;
+class ISocketLike;
 
 struct SocketPreservation {
-    ISocket* sock;
+    ISocketLike* sock;
     SocketHolderMapType from;
     SocketHolderMapType to;
 };

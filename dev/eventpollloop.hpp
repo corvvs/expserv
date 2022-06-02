@@ -1,7 +1,7 @@
 #ifndef EVENTPOLLLOOP_HPP
 # define EVENTPOLLLOOP_HPP
 # include "asocket.hpp"
-# include "isocket.hpp"
+# include "isocketlike.hpp"
 # include "listeningsocket.hpp"
 # include <map>
 # include <set>
@@ -15,14 +15,14 @@
 # include "socket_type.hpp"
 # include "ipanopticon.hpp"
 
-class ISocket;
+class ISocketLike;
 
 typedef short t_poll_eventmask;
 
 class EventPollLoop: public IPanopticon {
     private:
         typedef std::vector<pollfd>                 fd_vector;
-        typedef std::map<t_fd, ISocket*>            socket_map;
+        typedef std::map<t_fd, ISocketLike*>            socket_map;
         typedef std::map<t_fd, int>                 index_map;
         typedef std::set<int>                      gap_set;
         typedef std::vector< SocketPreservation >   update_queue;
@@ -39,23 +39,17 @@ class EventPollLoop: public IPanopticon {
 
         t_poll_eventmask    mask(SocketHolderMapType t);
 
-        void    preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to);
+        void    preserve(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to);
         void    update();
 
     public:
         EventPollLoop();
         ~EventPollLoop();
 
-        void    listen(
-            SocketDomain sdomain,
-            SocketType stype,
-            t_port port
-        );
-
         void    loop();
-        void    preserve_clear(ISocket* socket, SocketHolderMapType from);
-        void    preserve_set(ISocket* socket, SocketHolderMapType to);
-        void    preserve_move(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to);
+        void    preserve_clear(ISocketLike* socket, SocketHolderMapType from);
+        void    preserve_set(ISocketLike* socket, SocketHolderMapType to);
+        void    preserve_move(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to);
 };
 
 #endif

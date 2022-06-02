@@ -1,13 +1,13 @@
 #ifndef LISTENINGSOCKET_HPP
 # define LISTENINGSOCKET_HPP
 # include "asocket.hpp"
-# include "isocket.hpp"
+# include "isocketlike.hpp"
 # include "ipanopticon.hpp"
 # include "connectedsocket.hpp"
 
 class ConnectedSocket;
 
-class ListeningSocket: public ASocket, public ISocket {
+class ListeningSocket: public ASocket {
 private:
     ListeningSocket();
     ListeningSocket(

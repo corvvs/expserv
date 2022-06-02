@@ -79,13 +79,7 @@ ConnectedSocket*    ListeningSocket::accept() {
 }
 
 void            ListeningSocket::notify(IPanopticon& loop) {
-    switch (run_counter) {
-        case 0: {
-            ConnectedSocket* accepted = accept();
-            loop.preserve_set(accepted, SHMT_READ);
-            return;
-        }
-    }
+    (void) loop;
 }
 
 int             ListeningSocket::get_fd() const {

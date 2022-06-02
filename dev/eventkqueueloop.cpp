@@ -18,16 +18,6 @@ EventKqueueLoop::~EventKqueueLoop() {
     }
 }
 
-void    EventKqueueLoop::listen(
-    SocketDomain sdomain,
-    SocketType stype,
-    t_port port
-) {
-    ListeningSocket* sock = ListeningSocket::bind(sdomain, stype, port);
-    sock->listen(128);
-    preserve_set(sock, SHMT_READ);
-}
-
 EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(SocketHolderMapType t) {
     switch (t) {
     case SHMT_READ:
@@ -48,31 +38,31 @@ void    EventKqueueLoop::loop() {
         std::cout << "[S]loop: " << count << std::endl;
         for (int i = 0; i < count; i++) {
             int fd = evlist[i].ident;
-            ISocket* sock = sockmap[fd];
+            ISocketLike* sock = sockmap[fd];
             sock->notify(*this);
         }
         std::cout << "[S]loop: end" << std::endl;
     }
 }
 
-void    EventKqueueLoop::preserve(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to) {
+void    EventKqueueLoop::preserve(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to) {
     SocketPreservation  pre = {socket, from, to};
     upqueue.push_back(pre);
 }
 
 // 次のselectの前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventKqueueLoop::preserve_clear(ISocket* socket, SocketHolderMapType from) {
+void    EventKqueueLoop::preserve_clear(ISocketLike* socket, SocketHolderMapType from) {
     preserve(socket, from, SHMT_NONE);
 }
 
 // 次のselectの前に, このソケットを監視対象に追加する
-void    EventKqueueLoop::preserve_set(ISocket* socket, SocketHolderMapType to) {
+void    EventKqueueLoop::preserve_set(ISocketLike* socket, SocketHolderMapType to) {
     preserve(socket, SHMT_NONE, to);
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
-void    EventKqueueLoop::preserve_move(ISocket* socket, SocketHolderMapType from, SocketHolderMapType to) {
+void    EventKqueueLoop::preserve_move(ISocketLike* socket, SocketHolderMapType from, SocketHolderMapType to) {
     preserve(socket, from, to);
 }
 
@@ -83,7 +73,7 @@ void    EventKqueueLoop::update() {
     int n = 0;
     for (update_queue::iterator it = upqueue.begin(); it != upqueue.end(); it++) {
         t_kevent    ke;
-        ISocket*    sock = it->sock;
+        ISocketLike*    sock = it->sock;
         t_fd        fd = sock->get_fd();
         if (it->to == SHMT_NONE) {
             // std::cout << "clearing " << sock->get_fd() << std::endl;

@@ -5,6 +5,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					eventselectloop.cpp\
 					eventpollloop.cpp\
 					eventkqueueloop.cpp\
+					channel.cpp\
 					test_common.cpp
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
