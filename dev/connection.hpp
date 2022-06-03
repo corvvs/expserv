@@ -4,7 +4,9 @@
 # include "socketconnected.hpp"
 # include "isocketlike.hpp"
 # include "ipanopticon.hpp"
+# include "requesthttp.hpp"
 # include <string>
+# include <iostream>
 
 class Connection: public ISocketLike {
 private:
@@ -13,6 +15,8 @@ private:
     std::string         receipt_str;
 
     SocketConnected*    sock;
+
+    RequestHTTP*        current_req;
 
     // 直接呼び出し禁止
     Connection();

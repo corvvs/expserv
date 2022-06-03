@@ -35,6 +35,7 @@ void    EventKqueueLoop::loop() {
     while (1) {
         update();
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
+
         std::cout << "[S]loop: " << count << std::endl;
         for (int i = 0; i < count; i++) {
             int fd = evlist[i].ident;

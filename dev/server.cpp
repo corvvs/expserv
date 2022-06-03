@@ -11,18 +11,20 @@
 #include <unistd.h>
 #include <map>
 
-#define N 1024
-
 int main() {
     // IPanopticon *p = new EventSelectLoop();
     IPanopticon *p = new EventPollLoop();
     // IPanopticon *p = new EventKqueueLoop();
 
-    p->preserve_set(Channel::listen(SD_IP4, ST_TCP, 8080), SHMT_READ);
-    p->preserve_set(Channel::listen(SD_IP4, ST_TCP, 8081), SHMT_READ);
-    p->preserve_set(Channel::listen(SD_IP4, ST_TCP, 8082), SHMT_READ);
-    p->preserve_set(Channel::listen(SD_IP4, ST_TCP, 8083), SHMT_READ);
-    p->preserve_set(Channel::listen(SD_IP4, ST_TCP, 8084), SHMT_READ);
+    std::vector<Channel*> channels;
+    channels.push_back(Channel::listen(SD_IP4, ST_TCP, 8080));
+    channels.push_back(Channel::listen(SD_IP4, ST_TCP, 8081));
+    channels.push_back(Channel::listen(SD_IP4, ST_TCP, 8082));
+    channels.push_back(Channel::listen(SD_IP4, ST_TCP, 8083));
+    channels.push_back(Channel::listen(SD_IP4, ST_TCP, 8084));
+    for (std::vector<Channel*>::iterator it = channels.begin(); it != channels.end(); it++) {
+        p->preserve_set(*it, SHMT_READ);
+    }
 
     p->loop();
 

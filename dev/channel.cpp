@@ -28,7 +28,6 @@ t_fd    Channel::get_fd() const {
     return sock->get_fd();
 }
 
-
 void    Channel::notify(IPanopticon& loop) {
     Connection* conenction = new Connection(sock);
     loop.preserve_set(conenction, SHMT_READ);

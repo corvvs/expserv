@@ -45,6 +45,7 @@ SocketListening*    SocketListening::bind(
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
     DOUT() << "binding asocket for: " << port << ", " << sa.sin_addr.s_addr << "..." << std::endl;
     if (::bind(fd, (struct sockaddr*) &sa, sizeof(struct sockaddr_in)) == -1) {
+        std::cerr << strerror(errno) << std::endl;
         throw std::runtime_error("failed to bind a asocket");
     }
     DOUT() << "bound asocket." << std::endl;
