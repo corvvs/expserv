@@ -8,9 +8,16 @@
 # include <string>
 # include <iostream>
 
+enum t_connection_phase {
+    CONNECTION_NEUTRAL,
+    CONNECTION_RECEIVING,
+    CONNECTION_RESPONDING,
+    CONNECTION_ERROR_RESPONDING
+};
+
 class Connection: public ISocketLike {
 private:
-    int                 run_counter;
+    t_connection_phase  phase;
     bool                dying;
     std::string         receipt_str;
 

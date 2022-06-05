@@ -9,6 +9,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					connection.cpp\
 					requesthttp.cpp\
 					parserhelper.cpp\
+					http_error.cpp\
 					test_common.cpp
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
@@ -40,3 +41,9 @@ fclean: clean
 	$(RM) $(NAMES)
 
 re: fclean all
+
+up:	down all
+	./$(NAME_SERVER) &
+
+down:
+	pkill $(NAME_SERVER) || :

@@ -6,7 +6,7 @@ Connection::Connection() {
 }
 
 Connection::Connection(SocketListening* listening)
-    : run_counter(0), dying(false), current_req(NULL) {
+    : phase(CONNECTION_NEUTRAL), dying(false), current_req(NULL) {
     sock = listening->accept();
 }
 
@@ -22,30 +22,51 @@ void    Connection::notify(IPanopticon& loop) {
     if (dying) { return; }
 
     int fd = sock->get_fd();
-    std::cout << "[S]" << fd << " rc: " << run_counter << std::endl;
+    std::cout << "[S]" << fd << " rc: " << phase << std::endl;
 
-    switch (run_counter) {
-        case 0: {
-            char buf[N];
-            ssize_t receipt = sock->receive(&buf, N, 0);
-            std::cout << "[S]" << fd << " receipt: " << receipt << std::endl;
-            if (receipt <= 0) {
-                loop.preserve_clear(this, SHMT_READ);
-                run_counter++;
+    switch (phase) {
+        case CONNECTION_NEUTRAL:
+        case CONNECTION_RECEIVING: {
+            try {
+                char buf[RequestHTTP::MAX_REQLINE_END];
+                ssize_t receipt = sock->receive(&buf, RequestHTTP::MAX_REQLINE_END, 0);
+                if (receipt <= 0) {
+                    std::cout << "[S]" << fd << " * closed *" << std::endl;
+                    loop.preserve_clear(this, SHMT_READ);
+                    phase = CONNECTION_RESPONDING;
+                    return;
+                }
+
+                std::cout << "[S]" << fd << " receipt: " << receipt << std::endl;
+                if (current_req == NULL) {
+                    current_req = new RequestHTTP();
+                }
+                current_req->feed_bytes(buf, receipt);
+                if (current_req->respond_ready()) {
+                    
+                    phase = CONNECTION_RESPONDING;
+                    loop.preserve_move(this, SHMT_READ, SHMT_WRITE);
+                }
+                return;
+            } catch (http_error err) {
+                // HTTPエラーを受け取ったら,
+                // - エラー応答モードに入る
+                // - エラーレスポンスを生成
+                // - ソケットを送信モードで監視
+                std::cout << "[SE] catched an http error: " << err.get_status() << ": " << err.what() << std::endl;
+                phase = CONNECTION_ERROR_RESPONDING;
+                loop.preserve_move(this, SHMT_READ, SHMT_WRITE);
                 return;
             }
+        }
+        case CONNECTION_RESPONDING: {
 
-            if (current_req == NULL) {
-                current_req = new RequestHTTP();
-            }
-            current_req->feed_bytes(buf, receipt);
             return;
         }
         default:
             std::cout << "FAIL: " << fd << std::endl;
             throw std::runtime_error("????");
     }
-
 
     // switch (run_counter) {
     //     case 0: {

@@ -13,8 +13,9 @@ EventPollLoop::~EventPollLoop() {
 void    EventPollLoop::loop() {
     while (1) {
         update();
-        std::cout << "[S] polling count: " << nfds << std::endl;
 
+        // 監視状態の表示
+        std::cout << "[S] polling count: " << nfds << std::endl;
         std::cout << "[S]";
         for (fd_vector::iterator it = fds.begin(); it != fds.end(); it++) {
             std::cout << " ";
@@ -28,7 +29,7 @@ void    EventPollLoop::loop() {
         std::cout << std::endl;
 
         int count = poll(&*fds.begin(), fds.size(), 10 * 1000);
-        // std::cout << "polled. " << count << std::endl;
+
         if (count < 0) {
             throw std::runtime_error("poll error");
         }

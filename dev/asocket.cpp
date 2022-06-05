@@ -42,6 +42,10 @@ ASocket::ASocket(
     fd = sock;
     domain = sdomain;
     type = stype;
+
+    int yes = 1;
+    setsockopt(sock,
+       SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
 }
 
 ASocket::ASocket(

@@ -1,9 +1,6 @@
 #include "parserhelper.hpp"
 
-// LF, または CRLF を見つける.
-// 見つかった場合, LFまたはCRLFの [開始位置, 終了位置の次) のペアを返す.
-// 見つからない場合, [len, len) を返す.
-ParserHelper::index_range ParserHelper::find_crlf(char *bytes, ssize_t len) {
+ParserHelper::index_range ParserHelper::find_crlf(const char *bytes, ssize_t len) {
     for (ssize_t i = 0; i < len; i++) {
         if (bytes[i] == '\n') {
             if (0 < i && bytes[i - 1] == '\r') {
@@ -15,14 +12,13 @@ ParserHelper::index_range ParserHelper::find_crlf(char *bytes, ssize_t len) {
     return index_range(len, len);
 }
 
-// 空白行、すなわち「LFまたはCRLF」が2つ連続している部分を見つける.
-ParserHelper::index_range ParserHelper::find_blank_line(char *bytes, ssize_t len) {
+ParserHelper::index_range ParserHelper::find_blank_line(const char *bytes, ssize_t len) {
     ssize_t i;
     for(i = 0; i < len;) {
         DOUT() << "i: " << i << std::endl;
         index_range nl = find_crlf(bytes + i, len - i);
         DOUT() << "nl: [" << nl.first << "," << nl.second << ")" << std::endl;
-        if (nl.second == 0) {
+        if (nl.first >= nl.second) {
             break;
         }
         i += nl.second;
@@ -30,14 +26,13 @@ ParserHelper::index_range ParserHelper::find_blank_line(char *bytes, ssize_t len
             i += 1;
         }
         if (i + 1 < len && bytes[i + 1] == '\n') {
-            return index_range(nl.first, i + 1);
+            return index_range(i - (nl.second - nl.first), i + 1);
         }
     }
     return index_range(len, len);
 }
 
-// 文字列の先頭から, CRLRおよびLFをすべてスキップした位置のインデックスを返す
-ssize_t      ParserHelper::ignore_crlf(char *bytes, ssize_t len) {
+ssize_t      ParserHelper::ignore_crlf(const char *bytes, ssize_t len) {
     ssize_t i = 0;
     for (; i < len; i++) {
         DOUT() << i << ": " << bytes[i] << std::endl;
@@ -58,8 +53,7 @@ bool        ParserHelper::is_sp(char c) {
     return c == ' ';
 }
 
-// 文字列の先頭から, 「空白」をすべてスキップした位置のインデックスを返す
-ssize_t      ParserHelper::ignore_sp(char *bytes, ssize_t len) {
+ssize_t      ParserHelper::ignore_sp(const char *bytes, ssize_t len) {
     ssize_t i = 0;
     for (; i < len; i++) {
         if (is_sp(bytes[i])) {
@@ -70,8 +64,7 @@ ssize_t      ParserHelper::ignore_sp(char *bytes, ssize_t len) {
     return i;
 }
 
-// 文字列の先頭から, 「空白」以外をすべてスキップした位置のインデックスを返す
-ssize_t      ParserHelper::ignore_not_sp(char *bytes, ssize_t len) {
+ssize_t      ParserHelper::ignore_not_sp(const char *bytes, ssize_t len) {
     ssize_t i = 0;
     for (; i < len; i++) {
         if (!is_sp(bytes[i])) {
@@ -82,10 +75,9 @@ ssize_t      ParserHelper::ignore_not_sp(char *bytes, ssize_t len) {
     return i;
 }
 
-// 文字列を「空白」で分割する
-std::vector< ParserHelper::byte_buffer >  ParserHelper::split_by_sp(
-    ParserHelper::byte_buffer::iterator first,
-    ParserHelper::byte_buffer::iterator last
+std::vector< ParserHelper::byte_string >  ParserHelper::split_by_sp(
+    ParserHelper::byte_string::const_iterator first,
+    ParserHelper::byte_string::const_iterator last
 ) {
     typedef std::basic_string<char> str_type;
     std::vector< str_type >  rv;
@@ -105,4 +97,24 @@ std::vector< ParserHelper::byte_buffer >  ParserHelper::split_by_sp(
         prev_is_sp = cur_is_sp;
     }
     return rv;
+}
+
+bool    ParserHelper::is_listing_header(const byte_string& key) {
+    if (key == "set-cookie") { return true; }
+    return false;
+}
+
+unsigned int    ParserHelper::stou(const byte_string& str) {
+    std::stringstream   ss;
+    ss << str;
+    unsigned int        v;
+    ss >> v;
+    ss.clear();
+    ss << v;
+    byte_string         r;
+    ss >> r;
+    if (str != r) {
+        throw std::runtime_error("failed to convert string to int");
+    }
+    return v;
 }
