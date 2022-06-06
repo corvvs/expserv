@@ -119,3 +119,9 @@ unsigned int    ParserHelper::stou(const byte_string& str) {
     }
     return v;
 }
+
+ParserHelper::byte_string   ParserHelper::utos(unsigned int u) {
+    std::stringstream   ss;
+    ss << u;
+    return ss.str();
+}

@@ -1,3 +1,4 @@
+#include "connection.hpp"
 #include "channel.hpp"
 
 Channel::Channel() {
@@ -29,7 +30,7 @@ t_fd    Channel::get_fd() const {
 }
 
 void    Channel::notify(IObserver& loop) {
-    Connection* conenction = new Connection(sock);
+    Connection* conenction = new Connection(this);
     loop.preserve_set(conenction, SHMT_READ);
 }
 

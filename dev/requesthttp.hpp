@@ -7,24 +7,9 @@
 # include <utility>
 # include <sstream>
 # include "test_common.hpp"
+# include "http.hpp"
 # include "http_error.hpp"
 # include "parserhelper.hpp"
-
-enum t_http_method {
-    HTTP_METHOD_UNKNOWN,
-    HTTP_METHOD_GET,
-    HTTP_METHOD_POST,
-    HTTP_METHOD_DELETE,
-    HTTP_METHOD_ERROR
-};
-
-enum t_http_version {
-    HTTP_V_UNKNOWN,
-    HTTP_V_0_9,
-    HTTP_V_1_0,
-    HTTP_V_1_1,
-    HTTP_V_ERROR
-};
 
 enum t_http_request_parse_progress {
     // 開始行の開始位置 を探している
@@ -42,10 +27,8 @@ enum t_http_request_parse_progress {
 class RequestHTTP {
 public:
     static const size_t MAX_REQLINE_END = 8192;
-    typedef std::basic_string<char>
-                                    byte_string;
-    typedef std::map< byte_string, byte_string >
-                                    header_dict_type;
+    typedef HTTP::byte_string       byte_string;
+    typedef HTTP::header_dict_type  header_dict_type;
 
 private:
     byte_string                     bytebuffer;
@@ -64,9 +47,9 @@ private:
     byte_string                     raw_header;
 
     // 確定した情報
-    t_http_method                   http_method;
+    HTTP::t_method                   http_method;
     std::string                     request_path;
-    t_http_version                  http_version;
+    HTTP::t_version                  http_version;
     // -1 は未指定をあらわす
     size_t                          content_length;
 

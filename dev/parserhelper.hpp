@@ -4,15 +4,18 @@
 # include <vector>
 # include <utility>
 # include <sstream>
+# include "http.hpp"
 # include "test_common.hpp"
 
 namespace ParserHelper {
-    typedef std::basic_string<char>         byte_string;
+    typedef HTTP::byte_string               byte_string;
     typedef std::pair<ssize_t, ssize_t>     index_range;
 
     const byte_string SP = " ";
     const byte_string OWS = " \t";
     const byte_string HEADER_KV_SPLITTER = ":";
+    const byte_string CRLF = "\r\n";
+    const byte_string LF = "\n";
 
     // LF, または CRLF を見つける.
     // 見つかった場合, LFまたはCRLFの [開始位置, 終了位置の次) のペアを返す.
@@ -43,6 +46,7 @@ namespace ParserHelper {
 
     // string to size_t 変換
     unsigned int    stou(const byte_string& str);
+    byte_string     utos(unsigned int u);
 }
 
 #endif

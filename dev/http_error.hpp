@@ -7,11 +7,11 @@
 
 class http_error: public std::runtime_error {
     private:
-        t_http_status   status_;
+        HTTP::t_status   status_;
     public:
-        http_error(const char *_Message, t_http_status status);
+        http_error(const char *_Message, HTTP::t_status status);
 
-        t_http_status   get_status() const;
+        HTTP::t_status   get_status() const;
 };
 
 #endif

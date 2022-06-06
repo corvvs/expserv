@@ -1,41 +1,41 @@
 #include "requesthttp.hpp"
 
-t_http_method   judge_http_method(
+HTTP::t_method   judge_http_method(
     RequestHTTP::byte_string::iterator begin,
     RequestHTTP::byte_string::iterator end
 ) {
     RequestHTTP::byte_string sub(begin, end);
     if (sub == "GET") {
-        return HTTP_METHOD_GET;
+        return HTTP::METHOD_GET;
     }
     if (sub == "POST") {
-        return HTTP_METHOD_POST;
+        return HTTP::METHOD_POST;
     }
     if (sub == "DELETE") {
-        return HTTP_METHOD_DELETE;
+        return HTTP::METHOD_DELETE;
     }
-    throw http_error("Invalid Request: unsupported method", HTTP_STATUS_METHOD_NOT_ALLOWED);
+    throw http_error("Invalid Request: unsupported method", HTTP::STATUS_METHOD_NOT_ALLOWED);
 }
 
-t_http_version  judge_http_version(
+HTTP::t_version  judge_http_version(
     RequestHTTP::byte_string::iterator begin,
     RequestHTTP::byte_string::iterator end
 ) {
     RequestHTTP::byte_string sub(begin, end);
-    if (sub == "HTTP/1.0") {
-        return HTTP_V_1_0;
+    if (sub == HTTP::version_str(HTTP::V_1_0)) {
+        return HTTP::V_1_0;
     }
-    if (sub == "HTTP/1.1") {
-        return HTTP_V_1_1;
+    if (sub == HTTP::version_str(HTTP::V_1_1)) {
+        return HTTP::V_1_1;
     }
-    throw http_error("Invalid Request: unsupported version", HTTP_STATUS_VERSION_NOT_SUPPORTED);
+    throw http_error("Invalid Request: unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
 RequestHTTP::RequestHTTP():
     mid(0),
     parse_progress(PARSE_REQUEST_REQLINE_START),
-    http_method(HTTP_METHOD_UNKNOWN),
-    http_version(HTTP_V_UNKNOWN)
+    http_method(HTTP::METHOD_UNKNOWN),
+    http_version(HTTP::V_UNKNOWN)
 {
     bytebuffer.reserve(MAX_REQLINE_END);
     std::cout << "[R] generated" << std::endl;
@@ -149,7 +149,7 @@ void    RequestHTTP::feed_bytes(char *bytes, size_t len) {
             }
 
             default:
-                throw http_error("not implemented yet", HTTP_STATUS_NOT_IMPLEMENTED);
+                throw http_error("not implemented yet", HTTP::STATUS_NOT_IMPLEMENTED);
         }
     }
 }
@@ -180,7 +180,7 @@ bool    RequestHTTP::extract_reqline_end(size_t len) {
     start_of_header = mid;
     // -> end_of_reqline が8192バイト以内かどうか調べる。
     if (MAX_REQLINE_END <= end_of_reqline) {
-        throw http_error("Invalid Response: request line is too long", HTTP_STATUS_URI_TOO_LONG);
+        throw http_error("Invalid Response: request line is too long", HTTP::STATUS_URI_TOO_LONG);
     }
     return true;
 }
@@ -208,7 +208,7 @@ void    RequestHTTP::parse_reqline(const byte_string& raw_req_line) {
             if (splitted.size() == 3) {
                 http_version = judge_http_version(splitted[2].begin(), splitted[2].end());
             } else {
-                http_version = HTTP_V_0_9;
+                http_version = HTTP::V_0_9;
             }
             DSOUT() << "http_version: " << http_version << std::endl;
             break;
@@ -244,7 +244,7 @@ void    RequestHTTP::parse_header_line(const byte_string& header_line) {
         // ":"がない
         // -> おかしなヘッダ
         // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx は無視して処理を続けます。
-        throw http_error("Invalid Request: header does not contain a coron", HTTP_STATUS_BAD_REQUEST);
+        throw http_error("Invalid Request: header does not contain a coron", HTTP::STATUS_BAD_REQUEST);
     }
     // ":"があった
     // -> ":"の前後をキーとバリューにする
@@ -252,11 +252,11 @@ void    RequestHTTP::parse_header_line(const byte_string& header_line) {
     byte_string header_value(header_line.begin() + coron_pos + 1, header_line.end());
     // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。 串は、下流に転送する前に空白を削除しなければなりません。
     if (header_key.length() == 0) {
-        throw http_error("Invalid Request: header key is empty", HTTP_STATUS_BAD_REQUEST);
+        throw http_error("Invalid Request: header key is empty", HTTP::STATUS_BAD_REQUEST);
     }
     byte_string::size_type header_key_tail = header_key.find_last_not_of(ParserHelper::OWS);
     if (header_key_tail + 1 != header_key.length()) {
-        throw http_error("Invalid Request: found space between header key and coron", HTTP_STATUS_BAD_REQUEST);
+        throw http_error("Invalid Request: found space between header key and coron", HTTP::STATUS_BAD_REQUEST);
     }
     // [!] 欄値の前後の OWS は、欄値の一部ではなく、 構文解析の際に削除します
     byte_string::size_type header_value_head = header_value.find_first_not_of(ParserHelper::OWS);
@@ -293,15 +293,15 @@ void    RequestHTTP::extract_control_headers() {
     if (header_host.length() == 0) {
         // host が空
         // 1.1ならbad request
-        throw http_error("Invalid Request: no host", HTTP_STATUS_BAD_REQUEST);
+        throw http_error("Invalid Request: no host", HTTP::STATUS_BAD_REQUEST);
     }
     DSOUT() << "host is: " << header_host << std::endl;
     // - content-length
     // bodyを持たないメソッドの場合は0
     // そうでない場合, content-length の値を変換する
     switch (http_method) {
-        case HTTP_METHOD_GET:
-        case HTTP_METHOD_DELETE: {
+        case HTTP::METHOD_GET:
+        case HTTP::METHOD_DELETE: {
             content_length = 0;
             break;
         }

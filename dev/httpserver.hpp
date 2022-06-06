@@ -27,6 +27,7 @@ public:
         delete observer;
     }
 
+    // ほんとはconfに基づいてやる
     void    listen(
         t_socket_domain sdomain,
         t_socket_type stype,

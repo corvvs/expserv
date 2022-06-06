@@ -4,7 +4,7 @@
 
 class ResponseHTTPError {
 private:
-    t_http_status   status;
+    HTTP::t_status   status;
 };
 
 #endif

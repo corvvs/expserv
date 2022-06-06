@@ -8,8 +8,10 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					channel.cpp\
 					connection.cpp\
 					requesthttp.cpp\
+					responsehttp.cpp\
 					parserhelper.cpp\
 					http_error.cpp\
+					http.cpp\
 					test_common.cpp
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
