@@ -25,7 +25,9 @@ public:
     static Channel* listen(t_socket_domain sdomain, t_socket_type stype, t_port port);
 
     t_fd    get_fd() const;
-    void    notify(IPanopticon& loop);
+    void    notify(IObserver& loop);
+
+    t_channel_id    get_id() const;
 };
 
 #endif

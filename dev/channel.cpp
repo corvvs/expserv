@@ -28,7 +28,11 @@ t_fd    Channel::get_fd() const {
     return sock->get_fd();
 }
 
-void    Channel::notify(IPanopticon& loop) {
+void    Channel::notify(IObserver& loop) {
     Connection* conenction = new Connection(sock);
     loop.preserve_set(conenction, SHMT_READ);
+}
+
+Channel::t_channel_id   Channel::get_id() const {
+    return Channel::t_channel_id(sock->get_domain(), sock->get_port());
 }

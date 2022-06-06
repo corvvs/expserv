@@ -3,7 +3,7 @@
 # include "test_common.hpp"
 # include "socket_type.hpp"
 
-class IPanopticon;
+class IObserver;
 
 class ASocket {
 protected:

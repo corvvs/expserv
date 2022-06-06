@@ -29,7 +29,7 @@ public:
     SocketConnected*    accept();
     t_fd                get_fd() const;
 
-    void    notify(IPanopticon& loop);
+    void    notify(IObserver& loop);
 };
 
 #endif

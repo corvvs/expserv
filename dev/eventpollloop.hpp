@@ -19,7 +19,7 @@ class ISocketLike;
 
 typedef short t_poll_eventmask;
 
-class EventPollLoop: public IPanopticon {
+class EventPollLoop: public IObserver {
     private:
         typedef std::vector<pollfd>                 fd_vector;
         typedef std::map<t_fd, ISocketLike*>            socket_map;

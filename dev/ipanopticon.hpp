@@ -2,9 +2,9 @@
 # define IPANOPTICON_HPP
 # include "isocketlike.hpp"
 
-class IPanopticon {
+class IObserver {
 public:
-    virtual         ~IPanopticon() {};
+    virtual         ~IObserver() {};
 
     virtual void    loop() = 0;
     virtual void    preserve_clear(ISocketLike* socket, t_socket_operation from) = 0;

@@ -15,7 +15,7 @@
 
 class ISocketLike;
 
-class EventSelectLoop: public IPanopticon {
+class EventSelectLoop: public IObserver {
     private:
         typedef std::map<t_fd, ISocketLike*>            socket_map;
         typedef std::vector< t_socket_reservation >   update_queue;
