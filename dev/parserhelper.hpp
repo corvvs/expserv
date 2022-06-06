@@ -17,20 +17,20 @@ namespace ParserHelper {
     // LF, または CRLF を見つける.
     // 見つかった場合, LFまたはCRLFの [開始位置, 終了位置の次) のペアを返す.
     // 見つからない場合, [len, len) を返す.
-    index_range find_crlf(const char *bytes, ssize_t len);
+    index_range find_crlf(const byte_string& str, ssize_t from, ssize_t len);
 
     // 空白行、すなわち「LFまたはCRLF」が2つ連続している部分を見つける.
-    index_range find_blank_line(const char *bytes, ssize_t len);
+    index_range find_blank_line(const byte_string& str, ssize_t from, ssize_t len);
 
     // 文字列の先頭から, CRLRおよびLFをすべてスキップした位置のインデックスを返す
-    ssize_t     ignore_crlf(const char *bytes, ssize_t len);
+    ssize_t     ignore_crlf(const byte_string& str, ssize_t from, ssize_t len);
     bool        is_sp(char c);
 
     // 文字列の先頭から, 「空白」をすべてスキップした位置のインデックスを返す
-    ssize_t     ignore_sp(const char *bytes, ssize_t len);
+    ssize_t     ignore_sp(const byte_string& str, ssize_t from, ssize_t len);
 
     // 文字列の先頭から, 「空白」以外をすべてスキップした位置のインデックスを返す
-    ssize_t     ignore_not_sp(const char *bytes, ssize_t len);
+    ssize_t     ignore_not_sp(const byte_string& str, ssize_t from, ssize_t len);
 
     // 文字列を「空白」で分割する
     std::vector< byte_string >  split_by_sp(

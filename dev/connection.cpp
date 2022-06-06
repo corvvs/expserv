@@ -29,7 +29,7 @@ void    Connection::notify(IPanopticon& loop) {
         case CONNECTION_RECEIVING: {
             try {
                 char buf[RequestHTTP::MAX_REQLINE_END];
-                ssize_t receipt = sock->receive(&buf, RequestHTTP::MAX_REQLINE_END, 0);
+                ssize_t receipt = sock->receive(&buf, 3, 0);
                 if (receipt <= 0) {
                     std::cout << "[S]" << fd << " * closed *" << std::endl;
                     loop.preserve_clear(this, SHMT_READ);
@@ -43,7 +43,7 @@ void    Connection::notify(IPanopticon& loop) {
                 }
                 current_req->feed_bytes(buf, receipt);
                 if (current_req->respond_ready()) {
-                    
+
                     phase = CONNECTION_RESPONDING;
                     loop.preserve_move(this, SHMT_READ, SHMT_WRITE);
                 }
@@ -59,10 +59,10 @@ void    Connection::notify(IPanopticon& loop) {
                 return;
             }
         }
-        case CONNECTION_RESPONDING: {
+        // case CONNECTION_RESPONDING: {
 
-            return;
-        }
+        //     return;
+        // }
         default:
             std::cout << "FAIL: " << fd << std::endl;
             throw std::runtime_error("????");

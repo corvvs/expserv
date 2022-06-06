@@ -83,18 +83,23 @@ void    RequestHTTP::feed_bytes(char *bytes, size_t len) {
             // ヘッダの終わりを探す
             case PARSE_REQUEST_HEADER: {
                 DSOUT() << "* parsing header lines... *" << std::endl;
-
-                ParserHelper::index_range res = ParserHelper::find_crlf(&*(bytebuffer.begin()) + mid, len);
+                // DSOUT() << "end_of_reqline: " << end_of_reqline << std::endl;
+                // DSOUT() << "start_of_current_header: " << start_of_current_header << std::endl;
+                // DSOUT() << "mid: " << mid << std::endl;
+                // DSOUT() << "len: " << len << std::endl;
+                ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
+                // DSOUT() << "[" << res.first << "," << res.second << ")" << std::endl;
+                
                 mid += res.second;
                 if (res.first >= res.second) {
                     return ;
                 }
                 // CRLFが見つかった
                 // -> [mid, res.first) が1つのヘッダ
+                // DSOUT() << "[" << start_of_current_header << "," << mid - (res.second - res.first) << ")" << std::endl;
                 byte_string header_line(
                     bytebuffer.begin() + start_of_current_header,
                     bytebuffer.begin() + mid - (res.second - res.first));
-
                 if (header_line.length() > 0) {
                     // header_line が空文字列でない
                     // -> ヘッダとしてパースを試みる
@@ -151,7 +156,7 @@ void    RequestHTTP::feed_bytes(char *bytes, size_t len) {
 
 bool    RequestHTTP::extract_reqline_start(size_t len) {
     DSOUT() << "* determining start_of_reqline... *" << std::endl;
-    size_t s_o_s = ParserHelper::ignore_crlf(&*(bytebuffer.begin()) + mid, len);
+    size_t s_o_s = ParserHelper::ignore_crlf(bytebuffer, mid, len);
     DOUT() << len << " -> " << s_o_s << std::endl;
     mid += s_o_s;
     if (s_o_s == len) {
@@ -166,7 +171,8 @@ bool    RequestHTTP::extract_reqline_start(size_t len) {
 
 bool    RequestHTTP::extract_reqline_end(size_t len) {
     DSOUT() << "* determining end_of_reqline... *" << std::endl;
-    ParserHelper::index_range res = ParserHelper::find_crlf(&*(bytebuffer.begin()) + mid, len);
+    ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
+    DSOUT() << "[" << res.first << "," << res.second << ")" << std::endl;
     mid += res.second;
     if (res.first >= res.second) { return false; }
     // CRLFが見つかった
@@ -180,11 +186,11 @@ bool    RequestHTTP::extract_reqline_end(size_t len) {
 }
 
 void    RequestHTTP::parse_reqline(const byte_string& raw_req_line) {
-    DSOUT() << "\"" << raw_req_line << "\"" << std::endl;
+    DSOUT() << "* determined end_of_reqline *" << std::endl;
     DSOUT() << "end_of_reqline: " << end_of_reqline << std::endl;
     DSOUT() << "start_of_header: " << start_of_header << std::endl;
     DSOUT() << "* parsing reqline... *" << std::endl;
-    DSOUT() << "* determined end_of_reqline *" << std::endl;
+    DSOUT() << "\"" << raw_req_line << "\"" << std::endl;
 
     std::vector< byte_string > splitted = ParserHelper::split_by_sp(raw_req_line.begin(), raw_req_line.end());
 
@@ -195,9 +201,10 @@ void    RequestHTTP::parse_reqline(const byte_string& raw_req_line) {
             // HTTP/1.*?
 
             http_method = judge_http_method(splitted[0].begin(), splitted[0].end());
-            DSOUT() << "http_method: " << http_method << std::endl;
+            DSOUT() << byte_string(splitted[0].begin(), splitted[0].end()) << " -> http_method: " << http_method << std::endl;
             request_path = splitted[1];
             DSOUT() << "request_path: " << request_path << std::endl;
+            DSOUT() << "\"" << byte_string(splitted[2].begin(), splitted[2].end()) << "\"" << std::endl;
             if (splitted.size() == 3) {
                 http_version = judge_http_version(splitted[2].begin(), splitted[2].end());
             } else {
@@ -214,7 +221,7 @@ void    RequestHTTP::parse_reqline(const byte_string& raw_req_line) {
 }
 
 bool    RequestHTTP::extract_header_end(size_t len) {
-    ParserHelper::index_range res = ParserHelper::find_blank_line(&*bytebuffer.begin() + mid, len);
+    ParserHelper::index_range res = ParserHelper::find_blank_line(bytebuffer, mid, len);
     DSOUT() << "res: [" << res.first << "," << res.second << ")" << std::endl;
     mid += res.second;
     if (res.first >= res.second) { return false; }

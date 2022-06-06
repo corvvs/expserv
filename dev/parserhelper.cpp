@@ -1,51 +1,52 @@
 #include "parserhelper.hpp"
 
-ParserHelper::index_range ParserHelper::find_crlf(const char *bytes, ssize_t len) {
-    for (ssize_t i = 0; i < len; i++) {
-        if (bytes[i] == '\n') {
-            if (0 < i && bytes[i - 1] == '\r') {
-                return index_range(i - 1, i + 1);
+ParserHelper::index_range ParserHelper::find_crlf(const byte_string& str, ssize_t from, ssize_t len) {
+    for (ssize_t i = from; i - from < len; i++) {
+        // DSOUT() << from << ", " << i << ", " << len << ": " << str[i] << "-" << int(str[i]) << std::endl;
+        if (str[i] == '\n') {
+            if (0 < i && str[i - 1] == '\r') {
+                return index_range(i - 1 - from, i + 1 - from);
             }
-            return index_range(i, i + 1);
+            return index_range(i - from, i + 1 - from);
         }
     }
     return index_range(len, len);
 }
 
-ParserHelper::index_range ParserHelper::find_blank_line(const char *bytes, ssize_t len) {
+ParserHelper::index_range ParserHelper::find_blank_line(const byte_string& str, ssize_t from, ssize_t len) {
     ssize_t i;
     for(i = 0; i < len;) {
-        DOUT() << "i: " << i << std::endl;
-        index_range nl = find_crlf(bytes + i, len - i);
-        DOUT() << "nl: [" << nl.first << "," << nl.second << ")" << std::endl;
+        // DOUT() << "i: " << i << std::endl;
+        index_range nl = find_crlf(str, from + i, len - i);
+        // DOUT() << "nl: [" << nl.first << "," << nl.second << ")" << std::endl;
         if (nl.first >= nl.second) {
             break;
         }
         i += nl.second;
-        if (i + 1 < len && bytes[i + 1] == '\r') {
+        if (i + 1 < len && str[i + 1 + from] == '\r') {
             i += 1;
         }
-        if (i + 1 < len && bytes[i + 1] == '\n') {
+        if (i + 1 < len && str[i + 1 + from] == '\n') {
             return index_range(i - (nl.second - nl.first), i + 1);
         }
     }
     return index_range(len, len);
 }
 
-ssize_t      ParserHelper::ignore_crlf(const char *bytes, ssize_t len) {
+ssize_t      ParserHelper::ignore_crlf(const byte_string& str, ssize_t from, ssize_t len) {
     ssize_t i = 0;
     for (; i < len; i++) {
-        DOUT() << i << ": " << bytes[i] << std::endl;
-        if (bytes[i] == '\n') {
+        // DOUT() << i << ": " << str[i + from] << std::endl;
+        if (str[i + from] == '\n') {
             continue;
-        } else if (bytes[i] == '\r') {
-            if (i + 1 < len && bytes[i] == '\n') {
+        } else if (str[i + from] == '\r') {
+            if (i + 1 < len && str[i + from] == '\n') {
                 continue;
             }
         }
         break;
     }
-    DOUT() << "result: " << i << std::endl;
+    // DOUT() << "result: " << i << std::endl;
     return i;
 }
 
@@ -53,10 +54,10 @@ bool        ParserHelper::is_sp(char c) {
     return c == ' ';
 }
 
-ssize_t      ParserHelper::ignore_sp(const char *bytes, ssize_t len) {
+ssize_t      ParserHelper::ignore_sp(const byte_string& str, ssize_t from, ssize_t len) {
     ssize_t i = 0;
     for (; i < len; i++) {
-        if (is_sp(bytes[i])) {
+        if (is_sp(str[i + from])) {
             continue;
         }
         break;
@@ -64,10 +65,10 @@ ssize_t      ParserHelper::ignore_sp(const char *bytes, ssize_t len) {
     return i;
 }
 
-ssize_t      ParserHelper::ignore_not_sp(const char *bytes, ssize_t len) {
+ssize_t      ParserHelper::ignore_not_sp(const byte_string& str, ssize_t from, ssize_t len) {
     ssize_t i = 0;
     for (; i < len; i++) {
-        if (!is_sp(bytes[i])) {
+        if (!is_sp(str[i + from])) {
             continue;
         }
         break;
