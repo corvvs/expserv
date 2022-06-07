@@ -10,23 +10,10 @@ EventPollLoop::~EventPollLoop() {
 }
 
 // イベントループ
-void    EventPollLoop::loop() {
+void    EventPollLoop::run() {
     while (1) {
         update();
-
-        // 監視状態の表示
-        std::cout << "[S] polling count: " << nfds << std::endl;
-        std::cout << "[S]";
-        for (fd_vector::iterator it = fds.begin(); it != fds.end(); it++) {
-            std::cout << " ";
-            if (it->fd >= 0) {
-                std::cout << it->fd;
-            } else {
-                std::cout << "xx";
-            }
-            std::cout << ":" << it->events;
-        }
-        std::cout << std::endl;
+        debug_monitor();
 
         int count = poll(&*fds.begin(), fds.size(), 10 * 1000);
 
@@ -41,6 +28,22 @@ void    EventPollLoop::loop() {
             }
         }
     }
+}
+
+void    EventPollLoop::debug_monitor() {
+    // 監視状態の表示
+    std::cout << "[S] polling count: " << nfds << std::endl;
+    std::cout << "[S]";
+    for (fd_vector::iterator it = fds.begin(); it != fds.end(); it++) {
+        std::cout << " ";
+        if (it->fd >= 0) {
+            std::cout << it->fd;
+        } else {
+            std::cout << "xx";
+        }
+        std::cout << ":" << it->events;
+    }
+    std::cout << std::endl;
 }
 
 void    EventPollLoop::preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {

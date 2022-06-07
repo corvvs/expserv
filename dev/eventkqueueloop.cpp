@@ -31,18 +31,16 @@ EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_socket_operation t) {
     }
 }
 
-void    EventKqueueLoop::loop() {
+void    EventKqueueLoop::run() {
     while (1) {
         update();
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
 
-        std::cout << "[S]loop: " << count << std::endl;
         for (int i = 0; i < count; i++) {
             int fd = evlist[i].ident;
             ISocketLike* sock = sockmap[fd];
             sock->notify(*this);
         }
-        std::cout << "[S]loop: end" << std::endl;
     }
 }
 
@@ -51,18 +49,18 @@ void    EventKqueueLoop::preserve(ISocketLike* socket, t_socket_operation from, 
     upqueue.push_back(pre);
 }
 
-// 次のselectの前に, このソケットを監視対象から除外する
+// 次の kevent の前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
 void    EventKqueueLoop::preserve_clear(ISocketLike* socket, t_socket_operation from) {
     preserve(socket, from, SHMT_NONE);
 }
 
-// 次のselectの前に, このソケットを監視対象に追加する
+// 次の kevent の前に, このソケットを監視対象に追加する
 void    EventKqueueLoop::preserve_set(ISocketLike* socket, t_socket_operation to) {
     preserve(socket, SHMT_NONE, to);
 }
 
-// 次のselectの前に, このソケットの監視方法を変更する
+// 次の kevent の前に, このソケットの監視方法を変更する
 void    EventKqueueLoop::preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     preserve(socket, from, to);
 }
@@ -73,28 +71,27 @@ void    EventKqueueLoop::update() {
     if (upqueue.size() == 0) { return; }
     int n = 0;
     for (update_queue::iterator it = upqueue.begin(); it != upqueue.end(); it++) {
-        t_kevent    ke;
+        t_kevent        ke;
         ISocketLike*    sock = it->sock;
-        t_fd        fd = sock->get_fd();
+        t_fd            fd = sock->get_fd();
         if (it->to == SHMT_NONE) {
-            // std::cout << "clearing " << sock->get_fd() << std::endl;
             sockmap.erase(fd);
             delete sock;
         } else {
-            // std::cout << "updating " << sock->get_fd() << std::endl;
             changelist.push_back(ke);
             EV_SET(&*changelist.rbegin(), sock->get_fd(), filter(it->to), EV_ADD, 0, 0, NULL);
             sockmap[fd] = sock;
             n++;
         }
     }
-    // std::cout << changelist.size() << std::endl;
     if (n > 0) {
         errno = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
-        // std::cout << count << std::endl;
         if (errno) {
-            std::cout << "errno: " << errno  << ", " << changelist.size() << ", " << n << ", " << count << std::endl;
+            std::cout
+                << "errno: " << errno  << ", "
+                << changelist.size() << ", "
+                << n << ", " << count << std::endl;
         }
     }
     upqueue.clear();

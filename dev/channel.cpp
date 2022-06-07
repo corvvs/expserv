@@ -17,21 +17,19 @@ Channel::~Channel() {
     delete sock;
 }
 
-Channel* Channel::listen(
-    t_socket_domain sdomain,
-    t_socket_type stype,
-    t_port port
-) {
-    return new Channel(sdomain, stype, port);
-}
-
 t_fd    Channel::get_fd() const {
     return sock->get_fd();
 }
 
 void    Channel::notify(IObserver& loop) {
-    Connection* conenction = new Connection(this);
-    loop.preserve_set(conenction, SHMT_READ);
+    // Channelがnotifyを受ける
+    // -> accept ready
+    // -> Connectionを生成してread監視させる
+    try {
+        loop.preserve_set(new Connection(sock->accept()), SHMT_READ);
+    } catch (...) {
+        DSOUT() << "failed to accept socket: fd: " << sock->get_fd() << std::endl;
+    }
 }
 
 Channel::t_channel_id   Channel::get_id() const {

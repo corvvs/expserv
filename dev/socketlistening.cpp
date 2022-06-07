@@ -32,10 +32,9 @@ SocketListening*    SocketListening::bind(
     t_socket_type stype,
     t_port port
 ) {
-
     SocketListening* sock = new SocketListening(sdomain, stype);
-    sock->waitAccept();
-    t_fd fd = sock->get_fd();
+    sock->set_nonblock();
+    t_fd fd = sock->fd;
 
     struct sockaddr_in sa;
     cpp_bzero(&sa, sizeof(sa));
@@ -61,24 +60,11 @@ void    SocketListening::listen(int backlog) {
     DOUT() << "now listening..." << std::endl;
 }
 
-void            SocketListening::waitAccept() {
-    int rv;
-    rv = fcntl(fd, F_SETFL, O_NONBLOCK);
-    if (rv < 0) {
-        throw std::runtime_error("failed to fcntl");
-    }
-}
-
-
 SocketConnected*    SocketListening::accept() {
     t_fd accepted_fd = ::accept(fd, NULL, NULL);
     // DOUT() << "accepted" << std::endl;
     if (accepted_fd < 0) {
         throw std::runtime_error("failed to accept");
     }
-    return new SocketConnected(accepted_fd, *this);
-}
-
-int             SocketListening::get_fd() const {
-    return fd;
+    return SocketConnected::wrap(accepted_fd, *this);
 }

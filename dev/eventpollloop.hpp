@@ -13,12 +13,13 @@
 # include <errno.h>
 # include <unistd.h>
 # include "socket_type.hpp"
-# include "ipanopticon.hpp"
+# include "iobserver.hpp"
 
 class ISocketLike;
 
 typedef short t_poll_eventmask;
 
+// pollを使ったソケット監視者の実装
 class EventPollLoop: public IObserver {
     private:
         typedef std::vector<pollfd>                 fd_vector;
@@ -42,11 +43,13 @@ class EventPollLoop: public IObserver {
         void    preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
         void    update();
 
+        void    debug_monitor();
+
     public:
         EventPollLoop();
         ~EventPollLoop();
 
-        void    loop();
+        void    run();
         void    preserve_clear(ISocketLike* socket, t_socket_operation from);
         void    preserve_set(ISocketLike* socket, t_socket_operation to);
         void    preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);

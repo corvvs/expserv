@@ -66,7 +66,7 @@ void    EventSelectLoop::scan_fd_set(socket_map& sockmap, fd_set *sockset) {
 }
 
 // イベントループ
-void    EventSelectLoop::loop() {
+void    EventSelectLoop::run() {
     fd_set  read_set;
     fd_set  write_set;
     fd_set  exception_set;

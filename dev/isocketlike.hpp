@@ -1,7 +1,12 @@
 #ifndef ISOCKETLIKE_HPP
 # define ISOCKETLIKE_HPP
-# include "ipanopticon.hpp"
+# include "iobserver.hpp"
 
+class IObserver;
+
+// [ソケットインターフェース]
+// ソケット監視者(IObserver)の監視対象となりうるクラス.
+// 実際のソケットとは限らない.
 class ISocketLike {
 public:
     virtual         ~ISocketLike() {};

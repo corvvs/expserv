@@ -75,6 +75,18 @@ ASocket::~ASocket() {
     destroy();
 }
 
+void                ASocket::set_nonblock() {
+    int rv;
+    rv = fcntl(fd, F_SETFL, O_NONBLOCK);
+    if (rv < 0) {
+        throw std::runtime_error("failed to fcntl");
+    }
+}
+
+int                 ASocket::get_fd() const {
+    return fd;
+}
+
 t_socket_domain    ASocket::get_domain() const {
     return domain;
 }

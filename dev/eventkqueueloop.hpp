@@ -11,10 +11,11 @@
 # include <errno.h>
 # include <unistd.h>
 # include "socket_type.hpp"
-# include "ipanopticon.hpp"
+# include "iobserver.hpp"
 
 class ISocketLike;
 
+// kqueueを使ったソケット監視者の実装
 class EventKqueueLoop: public IObserver {
     private:
         typedef std::map<t_fd, ISocketLike*>            socket_map;
@@ -46,7 +47,7 @@ class EventKqueueLoop: public IObserver {
         EventKqueueLoop();
         ~EventKqueueLoop();
 
-        void    loop();
+        void    run();
         void    preserve_clear(ISocketLike* socket, t_socket_operation from);
         void    preserve_set(ISocketLike* socket, t_socket_operation to);
         void    preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);

@@ -42,6 +42,4 @@ struct t_socket_reservation {
     t_socket_operation to;
 };
 
-class EventSelectLoop;
-
 #endif

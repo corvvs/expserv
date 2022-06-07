@@ -97,6 +97,9 @@ public:
     size_t  parsed_size() const;
 
     std::pair<bool, byte_string> get_header(const byte_string& header_key) const;
+
+    byte_string::const_iterator   get_body_begin() const;
+    byte_string::const_iterator   get_body_end() const;
 };
 
 #endif

@@ -1,8 +1,6 @@
 #ifndef LISTENINGSOCKET_HPP
 # define LISTENINGSOCKET_HPP
 # include "asocket.hpp"
-# include "isocketlike.hpp"
-# include "ipanopticon.hpp"
 # include "socketconnected.hpp"
 
 class SocketConnected;
@@ -25,11 +23,7 @@ public:
         t_port port
     );
     void                listen(int backlog);
-    void                waitAccept();
     SocketConnected*    accept();
-    t_fd                get_fd() const;
-
-    void    notify(IObserver& loop);
 };
 
 #endif

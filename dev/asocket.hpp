@@ -3,13 +3,14 @@
 # include "test_common.hpp"
 # include "socket_type.hpp"
 
-class IObserver;
-
+// [抽象ソケットクラス]
+// ソケットを保持するクラス, の抽象クラス.
+// listenするか通信するかで2種類に分かれる.
 class ASocket {
 protected:
     t_fd            fd;
-    t_socket_domain    domain;
-    t_socket_type      type;
+    t_socket_domain domain;
+    t_socket_type   type;
     t_port          port;
     bool            dying;
 
@@ -39,9 +40,10 @@ public:
     virtual ~ASocket();
     ASocket& operator=(const ASocket& rhs);
 
-    virtual int     get_fd() const = 0;
-    t_socket_domain    get_domain() const;
-    t_socket_type      get_type() const;
+    void            set_nonblock();
+    int             get_fd() const;
+    t_socket_domain get_domain() const;
+    t_socket_type   get_type() const;
     t_port          get_port() const;
     bool            get_dying() const;
 };

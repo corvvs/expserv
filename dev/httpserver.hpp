@@ -4,6 +4,8 @@
 # include "channel.hpp"
 # include "isocketlike.hpp"
 
+// [サーバクラス]
+// ソケット監視クラスをテンプレート(TObserver)に取る
 template <
     class TObserver // * TObserver must conforms to IObserver *
 >
@@ -27,23 +29,21 @@ public:
         delete observer;
     }
 
+    // ソケットlisten開始
     // ほんとはconfに基づいてやる
     void    listen(
         t_socket_domain sdomain,
         t_socket_type stype,
         t_port port
     ) {
-        Channel *ch = Channel::listen(sdomain, stype, port);
+        Channel *ch = new Channel(sdomain, stype, port);
         channels[ch->get_id()] = ch;
         observer->preserve_set(ch, SHMT_READ);
     }
 
-    TObserver&  get_observer() const {
-        return *observer;
-    }
-
-    void        loop() {
-        observer->loop();
+    // イベントループ開始
+    void        run() {
+        observer->run();
     }
 
 };

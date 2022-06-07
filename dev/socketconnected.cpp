@@ -42,9 +42,8 @@ SocketConnected*    SocketConnected::connect(
     t_socket_type stype,
     t_port port
 ) {
-
     SocketConnected* sock = new SocketConnected(sdomain, stype);
-    t_fd fd = sock->get_fd();
+    t_fd fd = sock->fd;
 
     struct sockaddr_in sa;
     cpp_bzero(&sa, sizeof(sa));
@@ -66,14 +65,16 @@ SocketConnected*    SocketConnected::connect(
     return sock;
 }
 
+SocketConnected*    SocketConnected::wrap(t_fd fd, SocketListening& listening) {
+    SocketConnected* sock = new SocketConnected(fd, listening);
+    sock->set_nonblock();
+    return sock;
+}
+
 ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) {
-    return ::send(get_fd(), buffer, len, flags);
+    return ::send(fd, buffer, len, flags);
 }
 
 ssize_t SocketConnected::receive(void *buffer, size_t len, int flags) {
-    return ::recv(get_fd(), buffer, len, flags);
-}
-
-int             SocketConnected::get_fd() const {
-    return fd;
+    return ::recv(fd, buffer, len, flags);
 }

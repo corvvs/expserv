@@ -344,3 +344,11 @@ std::pair<bool, RequestHTTP::byte_string>    RequestHTTP::get_header(const byte_
     }
     return std::pair<bool, RequestHTTP::byte_string>(true, result->second);
 }
+
+RequestHTTP::byte_string::const_iterator  RequestHTTP::get_body_begin() const {
+    return bytebuffer.begin() + start_of_body;
+}
+
+RequestHTTP::byte_string::const_iterator  RequestHTTP::get_body_end() const {
+    return bytebuffer.end();
+}
