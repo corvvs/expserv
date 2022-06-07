@@ -43,7 +43,7 @@ RequestHTTP::RequestHTTP():
 
 RequestHTTP::~RequestHTTP() {}
 
-void    RequestHTTP::feed_bytes(char *bytes, size_t len) {
+void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
     bytebuffer.insert(bytebuffer.end(), bytes, bytes + len);
     std::cout << "[R] feed: " << len << std::endl;
     std::cout << "[R] progress: " << parse_progress << std::endl;
@@ -335,6 +335,10 @@ size_t  RequestHTTP::parsed_body_size() const {
 
 size_t  RequestHTTP::parsed_size() const {
     return mid;
+}
+
+HTTP::t_version RequestHTTP::get_http_version() const {
+    return http_version;
 }
 
 std::pair<bool, RequestHTTP::byte_string>    RequestHTTP::get_header(const byte_string& header_key) const {

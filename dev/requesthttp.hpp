@@ -24,6 +24,9 @@ enum t_http_request_parse_progress {
     PARSE_REQUEST_ERROR
 };
 
+// [HTTPリクエストクラス]
+// [責務]
+// - 順次供給されるバイト列をHTTPリクエストとして解釈すること
 class RequestHTTP {
 public:
     static const size_t MAX_REQLINE_END = 8192;
@@ -83,7 +86,7 @@ public:
     ~RequestHTTP();
 
     // 内部バッファにバイト列を追加し, ラフパースを試みる
-    void    feed_bytes(char *bytes, size_t len);
+    void    feed_bytestring(char *bytes, size_t len);
 
     // ナビゲーション(ルーティング)できる状態になったかどうか
     bool    navigation_ready() const;
@@ -96,10 +99,12 @@ public:
     // 解釈済みデータサイズ
     size_t  parsed_size() const;
 
-    std::pair<bool, byte_string> get_header(const byte_string& header_key) const;
+    HTTP::t_version                 get_http_version() const;
 
-    byte_string::const_iterator   get_body_begin() const;
-    byte_string::const_iterator   get_body_end() const;
+    std::pair<bool, byte_string>    get_header(const byte_string& header_key) const;
+
+    byte_string::const_iterator     get_body_begin() const;
+    byte_string::const_iterator     get_body_end() const;
 };
 
 #endif

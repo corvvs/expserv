@@ -66,7 +66,7 @@ void    EventSelectLoop::scan_fd_set(socket_map& sockmap, fd_set *sockset) {
 }
 
 // イベントループ
-void    EventSelectLoop::run() {
+void    EventSelectLoop::loop() {
     fd_set  read_set;
     fd_set  write_set;
     fd_set  exception_set;
@@ -103,25 +103,25 @@ void    EventSelectLoop::run() {
     }
 }
 
-void    EventSelectLoop::preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventSelectLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     t_socket_reservation  pre = {socket, from, to};
     up_queue.push_back(pre);
 }
 
 // 次のselectの前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventSelectLoop::preserve_clear(ISocketLike* socket, t_socket_operation from) {
-    preserve(socket, from, SHMT_NONE);
+void    EventSelectLoop::reserve_clear(ISocketLike* socket, t_socket_operation from) {
+    reserve(socket, from, SHMT_NONE);
 }
 
 // 次のselectの前に, このソケットを監視対象に追加する
-void    EventSelectLoop::preserve_set(ISocketLike* socket, t_socket_operation to) {
-    preserve(socket, SHMT_NONE, to);
+void    EventSelectLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
+    reserve(socket, SHMT_NONE, to);
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
-void    EventSelectLoop::preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
-    preserve(socket, from, to);
+void    EventSelectLoop::reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+    reserve(socket, from, to);
 }
 
 // ソケットの監視状態変更予約を実施する

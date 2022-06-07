@@ -35,7 +35,7 @@ class EventKqueueLoop: public IObserver {
 
         void    prepare_fd_set(socket_map& sockmap, fd_set *sockset);
         void    scan_fd_set(socket_map& sockmap, fd_set *sockset);
-        void    preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
+        void    reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
         void    update();
 
         void    watch(ISocketLike* socket, t_socket_operation map_type);
@@ -47,10 +47,10 @@ class EventKqueueLoop: public IObserver {
         EventKqueueLoop();
         ~EventKqueueLoop();
 
-        void    run();
-        void    preserve_clear(ISocketLike* socket, t_socket_operation from);
-        void    preserve_set(ISocketLike* socket, t_socket_operation to);
-        void    preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
+        void    loop();
+        void    reserve_clear(ISocketLike* socket, t_socket_operation from);
+        void    reserve_set(ISocketLike* socket, t_socket_operation to);
+        void    reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
 };
 
 #endif

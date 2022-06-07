@@ -40,7 +40,7 @@ class EventPollLoop: public IObserver {
 
         t_poll_eventmask    mask(t_socket_operation t);
 
-        void    preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
+        void    reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
         void    update();
 
         void    debug_monitor();
@@ -49,10 +49,10 @@ class EventPollLoop: public IObserver {
         EventPollLoop();
         ~EventPollLoop();
 
-        void    run();
-        void    preserve_clear(ISocketLike* socket, t_socket_operation from);
-        void    preserve_set(ISocketLike* socket, t_socket_operation to);
-        void    preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
+        void    loop();
+        void    reserve_clear(ISocketLike* socket, t_socket_operation from);
+        void    reserve_set(ISocketLike* socket, t_socket_operation to);
+        void    reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
 };
 
 #endif

@@ -5,14 +5,13 @@
 # include "socketlistening.hpp"
 # include "isocketlike.hpp"
 # include "iobserver.hpp"
-
-class Conenction;
+# include "irouter.hpp"
 
 // [チャネルクラス]
-// listenしているソケット1つを保持し,
-// 接続要求に応じてコネクションを作成する.
-// (予定)
-// - 同じプロトコル/ポートを持つバーチャルホスト(server)をまとめて管理する
+// [責務]
+// - リスニングソケット1つを保持すること
+// - 接続要求に応じてコネクションクラスを生成して返すこと
+// - TODO: 同じプロトコル/ポートを持つバーチャルホスト(server)をまとめて管理すること
 class Channel: public ISocketLike {
 public:
     // Channelを識別するためのID
@@ -21,6 +20,7 @@ public:
 
 private:
     SocketListening*    sock;
+    IRouter*            router_;
 
     // 呼び出し禁止
     // Channelは必ず有効なソケットと紐づく必要があるため.
@@ -29,7 +29,12 @@ private:
 
 public:
 
-    Channel(t_socket_domain sdomain, t_socket_type stype, t_port port);
+    Channel(
+        IRouter* router,
+        t_socket_domain sdomain,
+        t_socket_type stype,
+        t_port port
+    );
 
     ~Channel();
 

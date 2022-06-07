@@ -6,10 +6,13 @@ Channel::Channel() {
 }
 
 Channel::Channel(
+    IRouter* router,
     t_socket_domain sdomain,
     t_socket_type stype,
-    t_port port
-): sock(SocketListening::bind(sdomain, stype, port)) {
+    t_port port):
+    sock(SocketListening::bind(sdomain, stype, port)),
+    router_(router)
+{
     sock->listen(128);
 }
 
@@ -26,7 +29,7 @@ void    Channel::notify(IObserver& loop) {
     // -> accept ready
     // -> Connectionを生成してread監視させる
     try {
-        loop.preserve_set(new Connection(sock->accept()), SHMT_READ);
+        loop.reserve_set(new Connection(router_, sock->accept()), SHMT_READ);
     } catch (...) {
         DSOUT() << "failed to accept socket: fd: " << sock->get_fd() << std::endl;
     }

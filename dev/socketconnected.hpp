@@ -4,6 +4,10 @@
 
 class SocketListening;
 
+// [通信可能ソケットクラス]
+// [責務]
+// - ソケット1つを保持し, オブジェクト破壊時もしくはその前にソケットを閉じること
+// - ソケットを通じてバイト列の送受信を行うこと
 class SocketConnected: public ASocket {
 private:
     // 使用禁止

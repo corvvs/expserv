@@ -12,6 +12,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					parserhelper.cpp\
 					http_error.cpp\
 					http.cpp\
+					httpserver.cpp\
 					test_common.cpp
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)

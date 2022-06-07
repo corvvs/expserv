@@ -6,6 +6,9 @@
 # include "http_error.hpp"
 # include "parserhelper.hpp"
 
+// [HTTPレスポンスクラス]
+// [責務]
+// - HTTPレスポンスを構成する情報をまとめ, HTTPメッセージデータ(テキストデータ)を生成すること
 class ResponseHTTP {
 public:
     typedef HTTP::byte_string       byte_string;

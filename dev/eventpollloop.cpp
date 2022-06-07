@@ -10,7 +10,7 @@ EventPollLoop::~EventPollLoop() {
 }
 
 // イベントループ
-void    EventPollLoop::run() {
+void    EventPollLoop::loop() {
     while (1) {
         update();
         debug_monitor();
@@ -46,7 +46,7 @@ void    EventPollLoop::debug_monitor() {
     std::cout << std::endl;
 }
 
-void    EventPollLoop::preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventPollLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     t_socket_reservation  pre = {socket, from, to};
     if (from != SHMT_NONE && to == SHMT_NONE) {
         clearqueue.push_back(pre);
@@ -61,18 +61,18 @@ void    EventPollLoop::preserve(ISocketLike* socket, t_socket_operation from, t_
 
 // このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventPollLoop::preserve_clear(ISocketLike* socket, t_socket_operation from) {
-    preserve(socket, from, SHMT_NONE);
+void    EventPollLoop::reserve_clear(ISocketLike* socket, t_socket_operation from) {
+    reserve(socket, from, SHMT_NONE);
 }
 
 // このソケットを監視対象に追加する
-void    EventPollLoop::preserve_set(ISocketLike* socket, t_socket_operation to) {
-    preserve(socket, SHMT_NONE, to);
+void    EventPollLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
+    reserve(socket, SHMT_NONE, to);
 }
 
 // このソケットの監視方法を変更する
-void    EventPollLoop::preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
-    preserve(socket, from, to);
+void    EventPollLoop::reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+    reserve(socket, from, to);
 }
 
 t_poll_eventmask    EventPollLoop::mask(t_socket_operation t) {
@@ -94,7 +94,6 @@ void    EventPollLoop::update() {
     EventPollLoop::update_queue::iterator   it;
     for (it = clearqueue.begin(); it != clearqueue.end(); it++) {
         ISocketLike* sock = it->sock;
-        std::cout << "[S]FD-" << sock->get_fd() << ": clearing" << std::endl;
         int i = indexmap[sock->get_fd()];
         fds[i].fd = -1;
         sockmap.erase(sock->get_fd());
@@ -105,13 +104,11 @@ void    EventPollLoop::update() {
     }
     for (it = movequeue.begin(); it != movequeue.end(); it++) {
         ISocketLike* sock = it->sock;
-        std::cout << "[S]FD-" << sock->get_fd() << ": moving" << std::endl;
         int i = indexmap[sock->get_fd()];
         fds[i].events = mask(it->to);
     }
     for (it = setqueue.begin(); it != setqueue.end(); it++) {
         ISocketLike* sock = it->sock;
-        std::cout << "[S]FD-" << sock->get_fd() << ": setting" << std::endl;
         int i;
         if (gapset.empty()) {
             pollfd p = {};

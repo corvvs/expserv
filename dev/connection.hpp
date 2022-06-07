@@ -4,6 +4,7 @@
 # include "socketconnected.hpp"
 # include "isocketlike.hpp"
 # include "iobserver.hpp"
+# include "irouter.hpp"
 # include "requesthttp.hpp"
 # include "responsehttp.hpp"
 # include <string>
@@ -22,17 +23,15 @@ enum t_connection_phase {
 class Channel;
 
 // [コネクションクラス]
-// 通信可能ソケット1つを保持し,
-// このソケットを通したクライアントとの通信すべてを担当する.
-// 具体的には:
-// - リクエストの受信
-// - リクエストの解釈
-//   - リクエストのルーティングは他のやつが担当しそう
-// - レスポンスの作成(あやしい)
-// - レスポンスの送信
-// これらを内部状態を切り替えつつ処理する.
+// [責務]
+// - 通信可能ソケット1つを保持すること
+// - このソケット経由の双方向通信を管理すること
+//  - リクエストの受信と解釈
+//  - レスポンスの送信
+//    - 生成は ルーティングクラス(IRouter) が行う
 class Connection: public ISocketLike {
 private:
+    IRouter*            router_;
     t_connection_phase  phase;
     bool                dying;
 
@@ -50,7 +49,7 @@ private:
     void    clear_currents();
 
 public:
-    Connection(SocketConnected* sock_given);
+    Connection(IRouter* router, SocketConnected* sock_given);
     ~Connection();
 
     t_fd    get_fd() const;

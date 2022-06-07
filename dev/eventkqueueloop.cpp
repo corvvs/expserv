@@ -31,7 +31,7 @@ EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_socket_operation t) {
     }
 }
 
-void    EventKqueueLoop::run() {
+void    EventKqueueLoop::loop() {
     while (1) {
         update();
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
@@ -44,25 +44,25 @@ void    EventKqueueLoop::run() {
     }
 }
 
-void    EventKqueueLoop::preserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventKqueueLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     t_socket_reservation  pre = {socket, from, to};
     upqueue.push_back(pre);
 }
 
 // 次の kevent の前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventKqueueLoop::preserve_clear(ISocketLike* socket, t_socket_operation from) {
-    preserve(socket, from, SHMT_NONE);
+void    EventKqueueLoop::reserve_clear(ISocketLike* socket, t_socket_operation from) {
+    reserve(socket, from, SHMT_NONE);
 }
 
 // 次の kevent の前に, このソケットを監視対象に追加する
-void    EventKqueueLoop::preserve_set(ISocketLike* socket, t_socket_operation to) {
-    preserve(socket, SHMT_NONE, to);
+void    EventKqueueLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
+    reserve(socket, SHMT_NONE, to);
 }
 
 // 次の kevent の前に, このソケットの監視方法を変更する
-void    EventKqueueLoop::preserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
-    preserve(socket, from, to);
+void    EventKqueueLoop::reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+    reserve(socket, from, to);
 }
 
 void    EventKqueueLoop::update() {

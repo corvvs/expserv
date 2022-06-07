@@ -5,6 +5,11 @@
 
 class SocketConnected;
 
+// [リスニングソケットクラス]
+// [責務]
+// - ソケット1つを保持し, オブジェクト破壊時もしくはその前にソケットを閉じること
+// - ソケットをリスニング状態にしておくこと
+// - 必要に応じて通信可能ソケットクラスを生成すること
 class SocketListening: public ASocket {
 private:
     SocketListening();

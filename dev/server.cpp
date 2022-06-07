@@ -4,9 +4,7 @@
 #include "httpserver.hpp"
 
 int main() {
-    // HTTPServer<EventSelectLoop>  http_server;
-    // HTTPServer<EventPollLoop>  http_server;
-    HTTPServer<EventKqueueLoop>  http_server;
+    HTTPServer  http_server(new EventKqueueLoop());
 
     http_server.listen(SD_IP4, ST_TCP, 8080);
     http_server.listen(SD_IP4, ST_TCP, 8081);

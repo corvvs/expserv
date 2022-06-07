@@ -3,31 +3,27 @@
 # include <map>
 # include "channel.hpp"
 # include "isocketlike.hpp"
+# include "iobserver.hpp"
+# include "irouter.hpp"
 
 // [サーバクラス]
-// ソケット監視クラスをテンプレート(TObserver)に取る
-template <
-    class TObserver // * TObserver must conforms to IObserver *
->
-class HTTPServer {
+// [責務]
+// - TODO: confファイルを読み取り解釈すること
+// - (TODO: confファイルに基づいて)リスニングソケットを生成すること
+// - ソケット監視処理を起動すること
+// - TODO: リクエストを適切にルーティングしてレスポンスを生成すること
+class HTTPServer: public IRouter {
 public:
     typedef std::map<Channel::t_channel_id, Channel*> channel_map;
 
 private:
+    IObserver*  socket_observer_;
     channel_map channels;
-    TObserver*  observer;
 
 public:
-    HTTPServer(): observer(new TObserver()) {
+    HTTPServer(IObserver* observer);
 
-    }
-
-    ~HTTPServer() {
-        for (channel_map::iterator it = channels.begin(); it != channels.end(); it++) {
-            delete it->second;
-        }
-        delete observer;
-    }
+    ~HTTPServer();
 
     // ソケットlisten開始
     // ほんとはconfに基づいてやる
@@ -35,17 +31,13 @@ public:
         t_socket_domain sdomain,
         t_socket_type stype,
         t_port port
-    ) {
-        Channel *ch = new Channel(sdomain, stype, port);
-        channels[ch->get_id()] = ch;
-        observer->preserve_set(ch, SHMT_READ);
-    }
+    );
 
     // イベントループ開始
-    void        run() {
-        observer->run();
-    }
+    void        run();
 
+    // リクエストのルーティング
+    ResponseHTTP*   route(RequestHTTP* request);
 };
 
 #endif
