@@ -50,6 +50,7 @@ public:
 
     t_fd    get_fd() const;
     void    notify(IObserver& observer);
+    
 };
 
 #endif

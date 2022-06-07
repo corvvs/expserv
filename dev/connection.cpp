@@ -13,7 +13,8 @@ Connection::Connection(
     phase(CONNECTION_RECEIVING),
     dying(false),
     sock(sock_given),
-    current_req(NULL) {}
+    current_req(NULL),
+    current_res(NULL) {}
 
 Connection::~Connection() {
     delete sock;
@@ -42,9 +43,9 @@ case CONNECTION_RECEIVING: {
     try {
         ssize_t receipt = sock->receive(&buf, read_buffer_size, 0);
         if (receipt <= 0) {
-            std::cout << "[S]" << fd << " * closed *" << std::endl;
+            std::cout << "[S]" << fd << " * closing... *" << std::endl;
+            dying = true;
             observer.reserve_clear(this, SHMT_READ);
-            phase = CONNECTION_RESPONDING;
             return;
         }
 
@@ -78,10 +79,11 @@ case CONNECTION_RESPONDING: {
     // [コネクション:送信モード]
     try {
 
+        DSOUT() << fd << ": " << current_res << std::endl;
         const char *buf = current_res->get_unsent_head();
         ssize_t sent = sock->send(buf, current_res->get_unsent_size(), 0);
-        current_res->mark_sent(sent);
         DSOUT() << "sending " << current_res->get_unsent_size() << "bytes, and actually sent " << sent << "bytes" << std::endl;
+        current_res->mark_sent(sent);
 
         // 送信が完了した場合
         if (current_res->is_over_sending()) {
@@ -96,6 +98,7 @@ case CONNECTION_RESPONDING: {
         if (sent <= 0) {
             // TODO: とりあえず接続を閉じておくが, 本当はどうするべき？
             observer.reserve_clear(this, SHMT_WRITE);
+            dying = true;
             return;
         }
         // TODO: keep-alive対応
