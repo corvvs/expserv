@@ -52,9 +52,9 @@ case CONNECTION_RECEIVING: {
         current_req->feed_bytestring(buf, receipt);
         if (current_req->respond_ready()) {
             // リクエストの解析が完了したら応答開始
-            phase = CONNECTION_RESPONDING;
             current_res = router_->route(current_req);
-            loop.reserve_move(this, SHMT_READ, SHMT_WRITE);
+            loop.reserve_transit(this, SHMT_READ, SHMT_WRITE);
+            phase = CONNECTION_RESPONDING;
         }
     } catch (http_error err) {
         // HTTPエラーを受け取ったら,
@@ -69,7 +69,7 @@ case CONNECTION_RECEIVING: {
             err
         );
         current_res->render();
-        loop.reserve_move(this, SHMT_READ, SHMT_WRITE);
+        loop.reserve_transit(this, SHMT_READ, SHMT_WRITE);
     }
     return;
 
@@ -94,7 +94,7 @@ case CONNECTION_RESPONDING: {
         // 応答送信中に例外が起きたら, 応答を放棄する
         DSOUT() << "[SE] catched an http error: " << err.get_status() << ": " << err.what() << std::endl;
         clear_currents();
-        loop.reserve_move(this, SHMT_WRITE, SHMT_READ);
+        loop.reserve_transit(this, SHMT_WRITE, SHMT_READ);
     }
     return;
 }

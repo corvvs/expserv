@@ -71,7 +71,7 @@ void    EventPollLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
 }
 
 // このソケットの監視方法を変更する
-void    EventPollLoop::reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventPollLoop::reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     reserve(socket, from, to);
 }
 

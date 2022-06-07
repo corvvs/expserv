@@ -61,7 +61,7 @@ void    EventKqueueLoop::reserve_set(ISocketLike* socket, t_socket_operation to)
 }
 
 // 次の kevent の前に, このソケットの監視方法を変更する
-void    EventKqueueLoop::reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventKqueueLoop::reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     reserve(socket, from, to);
 }
 

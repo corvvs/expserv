@@ -120,7 +120,7 @@ void    EventSelectLoop::reserve_set(ISocketLike* socket, t_socket_operation to)
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
-void    EventSelectLoop::reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventSelectLoop::reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
     reserve(socket, from, to);
 }
 

@@ -50,7 +50,7 @@ class EventKqueueLoop: public IObserver {
         void    loop();
         void    reserve_clear(ISocketLike* socket, t_socket_operation from);
         void    reserve_set(ISocketLike* socket, t_socket_operation to);
-        void    reserve_move(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
+        void    reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
 };
 
 #endif

@@ -34,7 +34,7 @@ public:
     );
 
     // イベントループ開始
-    void        run();
+    void            run();
 
     // リクエストのルーティング
     ResponseHTTP*   route(RequestHTTP* request);

@@ -10,6 +10,7 @@ class IRouter {
 public:
     virtual                 ~IRouter() {};
 
+    // リクエストからレスポンスを生成する
     virtual ResponseHTTP*   route(RequestHTTP* request) = 0;
 };
 

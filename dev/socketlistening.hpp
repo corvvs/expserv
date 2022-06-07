@@ -27,8 +27,8 @@ public:
         t_socket_type stype,
         t_port port
     );
-    void                listen(int backlog);
-    SocketConnected*    accept();
+    void                    listen(int backlog);
+    SocketConnected*        accept();
 };
 
 #endif

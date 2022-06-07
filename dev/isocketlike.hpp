@@ -11,7 +11,9 @@ class IObserver;
 class ISocketLike {
 public:
     virtual         ~ISocketLike() {};
+    // 紐づいているソケットのfdを返す
     virtual t_fd    get_fd() const = 0;
+    // ソケット監視者からの通知を受け取る
     virtual void    notify(IObserver& loop) = 0;
 };
 
