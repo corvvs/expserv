@@ -9,7 +9,8 @@ Channel::Channel(
     IRouter* router,
     t_socket_domain sdomain,
     t_socket_type stype,
-    t_port port):
+    t_port port
+):
     sock(SocketListening::bind(sdomain, stype, port)),
     router_(router)
 {

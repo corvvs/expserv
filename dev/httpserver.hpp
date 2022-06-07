@@ -36,8 +36,13 @@ public:
     // イベントループ開始
     void            run();
 
-    // リクエストのルーティング
     ResponseHTTP*   route(RequestHTTP* request);
+
+    ResponseHTTP*   respond_error(
+        RequestHTTP* request,
+        http_error error
+    );
+
 };
 
 #endif

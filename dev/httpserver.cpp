@@ -33,3 +33,16 @@ ResponseHTTP*   HTTPServer::route(RequestHTTP* request) {
     DSOUT() << res->get_message_text() << std::endl;
     return res;
 }
+
+ResponseHTTP*   HTTPServer::respond_error(
+    RequestHTTP* request,
+    http_error error
+) {
+    (void)request;
+    ResponseHTTP*   res = new ResponseHTTP(
+        HTTP::DEFAULT_HTTP_VERSION,
+        error
+    );
+    res->render();
+    return res;
+}
