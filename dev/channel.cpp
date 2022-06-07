@@ -25,12 +25,12 @@ t_fd    Channel::get_fd() const {
     return sock->get_fd();
 }
 
-void    Channel::notify(IObserver& loop) {
+void    Channel::notify(IObserver& observer) {
     // Channelがnotifyを受ける
     // -> accept ready
     // -> Connectionを生成してread監視させる
     try {
-        loop.reserve_set(new Connection(router_, sock->accept()), SHMT_READ);
+        observer.reserve_set(new Connection(router_, sock->accept()), SHMT_READ);
     } catch (...) {
         DSOUT() << "failed to accept socket: fd: " << sock->get_fd() << std::endl;
     }

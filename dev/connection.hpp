@@ -1,6 +1,5 @@
 #ifndef CONNECTION_HPP
 # define CONNECTION_HPP
-# include "socketlistening.hpp"
 # include "socketconnected.hpp"
 # include "isocketlike.hpp"
 # include "iobserver.hpp"
@@ -19,8 +18,6 @@ enum t_connection_phase {
     // 送信モード(エラー応答)
     CONNECTION_ERROR_RESPONDING
 };
-
-class Channel;
 
 // [コネクションクラス]
 // [責務]
@@ -44,8 +41,7 @@ private:
     // ConnectionオブジェクトはChannelオブジェクトによってのみ作成されて欲しいため
     Connection();
 
-    // current_req, current_res をクリアし,
-    // 送信待ち状態に遷移する
+    // current_req, current_res をクリアする
     void    clear_currents();
 
 public:
@@ -53,7 +49,7 @@ public:
     ~Connection();
 
     t_fd    get_fd() const;
-    void    notify(IObserver& loop);
+    void    notify(IObserver& observer);
 };
 
 #endif

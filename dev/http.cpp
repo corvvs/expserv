@@ -1,6 +1,6 @@
 #include "http.hpp"
 
-const std::string   HTTP::version_str(HTTP::t_version version) {
+const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
     switch (version) {
         case V_0_9:
             return "HTTP/0.9";
@@ -13,7 +13,7 @@ const std::string   HTTP::version_str(HTTP::t_version version) {
     }
 }
 
-const std::string   HTTP::reason(HTTP::t_status status) {
+const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
     switch (status) {
         case HTTP::STATUS_OK:
             return "OK";

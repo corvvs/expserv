@@ -50,9 +50,9 @@ private:
     byte_string                     raw_header;
 
     // 確定した情報
-    HTTP::t_method                   http_method;
-    std::string                     request_path;
-    HTTP::t_version                  http_version;
+    HTTP::t_method                  http_method;
+    byte_string                     request_path;
+    HTTP::t_version                 http_version;
     // -1 は未指定をあらわす
     size_t                          content_length;
 

@@ -6,7 +6,7 @@ ResponseHTTP::ResponseHTTP(
 ):  version_(version),
     status_(status),
     is_error(false),
-    consumed(0)
+    sent_size(0)
 {}
 
 ResponseHTTP::ResponseHTTP(
@@ -15,7 +15,7 @@ ResponseHTTP::ResponseHTTP(
 ):  version_(version),
     status_(error.get_status()),
     is_error(true),
-    consumed(0)
+    sent_size(0)
 {}
 
 void    ResponseHTTP::feed_header(
@@ -74,17 +74,23 @@ const ResponseHTTP::byte_string&  ResponseHTTP::get_message_text() const {
     return message_text;
 }
 
-const char* ResponseHTTP::get_unsent() const {
-    return message_text.c_str() + consumed;
+const char* ResponseHTTP::get_unsent_head() const {
+    return message_text.c_str() + sent_size;
 }
 
-void        ResponseHTTP::mark_sent(size_t sent) {
-    consumed += sent;
-    if (message_text.length() < consumed) {
-        consumed = message_text.length();
+void        ResponseHTTP::mark_sent(ssize_t sent) {
+    if (sent <= 0) { return; }
+    sent_size += sent;
+    if (message_text.length() < sent_size) {
+        sent_size = message_text.length();
     }
 }
 
 size_t      ResponseHTTP::get_unsent_size() const {
-    return message_text.length() - consumed;
+    return message_text.length() - sent_size;
 }
+
+bool        ResponseHTTP::is_over_sending() const {
+    return get_unsent_size() == 0;
+}
+

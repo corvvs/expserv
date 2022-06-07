@@ -39,7 +39,7 @@ public:
     ~Channel();
 
     t_fd            get_fd() const;
-    void            notify(IObserver& loop);
+    void            notify(IObserver& observer);
 
     t_channel_id    get_id() const;
 };

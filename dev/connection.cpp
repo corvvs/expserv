@@ -25,7 +25,7 @@ t_fd    Connection::get_fd() const {
     return sock->get_fd();
 }
 
-void    Connection::notify(IObserver& loop) {
+void    Connection::notify(IObserver& observer) {
     // switch, try-catch は意図的にインデント崩して書いてます
     if (dying) { return; }
 
@@ -43,7 +43,7 @@ case CONNECTION_RECEIVING: {
         ssize_t receipt = sock->receive(&buf, read_buffer_size, 0);
         if (receipt <= 0) {
             std::cout << "[S]" << fd << " * closed *" << std::endl;
-            loop.reserve_clear(this, SHMT_READ);
+            observer.reserve_clear(this, SHMT_READ);
             phase = CONNECTION_RESPONDING;
             return;
         }
@@ -57,16 +57,16 @@ case CONNECTION_RECEIVING: {
 
         // リクエストの解析が完了したら応答開始
         current_res = router_->route(current_req);
-        loop.reserve_transit(this, SHMT_READ, SHMT_WRITE);
+        observer.reserve_transit(this, SHMT_READ, SHMT_WRITE);
         phase = CONNECTION_RESPONDING;
 
     } catch (http_error err) {
 
         // 受信中のHTTPエラー
         std::cout << "[SE] catched an http error: " << err.get_status() << ": " << err.what() << std::endl;
-        phase = CONNECTION_ERROR_RESPONDING;
         current_res = router_->respond_error(current_req, err);
-        loop.reserve_transit(this, SHMT_READ, SHMT_WRITE);
+        observer.reserve_transit(this, SHMT_READ, SHMT_WRITE);
+        phase = CONNECTION_ERROR_RESPONDING;
 
     }
     return;
@@ -78,17 +78,25 @@ case CONNECTION_RESPONDING: {
     // [コネクション:送信モード]
     try {
 
-        const char *buf = current_res->get_unsent();
+        const char *buf = current_res->get_unsent_head();
         ssize_t sent = sock->send(buf, current_res->get_unsent_size(), 0);
+        current_res->mark_sent(sent);
         DSOUT() << "sending " << current_res->get_unsent_size() << "bytes, and actually sent " << sent << "bytes" << std::endl;
 
-        if (sent > 0) {
-            current_res->mark_sent(sent);
-        }
-        // ソケットを閉じる
-        if (sent <= 0 || current_res->get_unsent_size() == 0) {
-            loop.reserve_clear(this, SHMT_WRITE);
+        // 送信が完了した場合
+        if (current_res->is_over_sending()) {
+            // TODO: 接続を閉じる or 閉じないで受信状態に移る の判別
+            clear_currents();
+            observer.reserve_transit(this, SHMT_WRITE, SHMT_READ);
             phase = CONNECTION_RECEIVING;
+            return;
+        }
+
+        // 送信ができなかったか, エラーが起きた場合
+        if (sent <= 0) {
+            // TODO: とりあえず接続を閉じておくが, 本当はどうするべき？
+            observer.reserve_clear(this, SHMT_WRITE);
+            return;
         }
         // TODO: keep-alive対応
 
@@ -97,7 +105,7 @@ case CONNECTION_RESPONDING: {
         // 送信中のHTTPエラー
         DSOUT() << "[SE] catched an http error: " << err.get_status() << ": " << err.what() << std::endl;
         clear_currents();
-        loop.reserve_transit(this, SHMT_WRITE, SHMT_READ);
+        observer.reserve_transit(this, SHMT_WRITE, SHMT_READ);
         phase = CONNECTION_RECEIVING;
 
     }

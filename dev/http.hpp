@@ -67,8 +67,8 @@ namespace HTTP {
     // サーバのデフォルトのHTTPバージョン
     const t_version     DEFAULT_HTTP_VERSION = V_1_1;
 
-    const std::string   version_str(HTTP::t_version version);
-    const std::string   reason(HTTP::t_status status);
+    const byte_string   version_str(HTTP::t_version version);
+    const byte_string   reason(HTTP::t_status status);
 }
 
 #endif
