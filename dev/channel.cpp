@@ -30,9 +30,16 @@ void    Channel::notify(IObserver& observer) {
     // -> accept ready
     // -> Connectionを生成してread監視させる
     try {
-        observer.reserve_set(new Connection(router_, sock->accept()), SHMT_READ);
+        for (;true;) {
+            SocketConnected*    connected = sock->accept();
+            if (connected == NULL) {
+                // acceptするものが残っていない場合 NULL が返ってくる
+                break;
+            }
+            observer.reserve_set(new Connection(router_, connected), SHMT_READ);
+        }
     } catch (...) {
-        DSOUT() << "failed to accept socket: fd: " << sock->get_fd() << std::endl;
+        DSOUT() << "[!!!!] failed to accept socket: fd: " << sock->get_fd() << std::endl;
     }
 }
 

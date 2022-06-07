@@ -88,10 +88,6 @@ public:
     // 内部バッファにバイト列を追加し, ラフパースを試みる
     void    feed_bytestring(char *bytes, size_t len);
 
-    // ナビゲーション(ルーティング)できる状態になったかどうか
-    bool    navigation_ready() const;
-    // レスポンスを作成できる状態になったかどうか
-    bool    respond_ready() const;
     // 受信済み(未解釈含む)データサイズ
     size_t  receipt_size() const;
     // 解釈済みボディサイズ
@@ -99,12 +95,29 @@ public:
     // 解釈済みデータサイズ
     size_t  parsed_size() const;
 
-    HTTP::t_version                 get_http_version() const;
+    // リクエストのHTTPバージョン
+    HTTP::t_version
+            get_http_version() const;
 
-    std::pair<bool, byte_string>    get_header(const byte_string& header_key) const;
+    // 指定した key のヘッダーを取得する
+    // - first: そのヘッダーが存在するかどうか
+    // - second: そのヘッダーの value; 存在しない場合は空文字列
+    std::pair<bool, byte_string>
+            get_header(const byte_string& header_key) const;
 
-    byte_string::const_iterator     get_body_begin() const;
-    byte_string::const_iterator     get_body_end() const;
+    // リクエスト本文の開始位置
+    byte_string::const_iterator
+            get_body_begin() const;
+    // リクエスト本文の終了位置
+    byte_string::const_iterator
+            get_body_end() const;
+
+    // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
+    bool    is_ready_to_navigate() const;
+    // predicate: レスポンスを作成できる状態になったかどうか
+    bool    is_ready_to_respond() const;
+    // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
+    bool    should_keep_in_touch() const;
 };
 
 #endif

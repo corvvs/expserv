@@ -21,7 +21,7 @@ enum t_connection_phase {
 
 // [コネクションクラス]
 // [責務]
-// - 通信可能ソケット1つを保持すること
+// - 通信可能ソケット1つを保持すること; ISocketLike
 // - このソケット経由の双方向通信を管理すること
 //  - リクエストの受信と解釈
 //  - レスポンスの送信
@@ -37,12 +37,17 @@ private:
     RequestHTTP*        current_req;
     ResponseHTTP*       current_res;
 
+    int                 started_;
+
     // 直接呼び出し禁止
     // ConnectionオブジェクトはChannelオブジェクトによってのみ作成されて欲しいため
     Connection();
 
-    // current_req, current_res をクリアする
-    void    clear_currents();
+    // もう一度受信状態に戻る
+    void    restart(IObserver& observer);
+
+    // 接続を閉じる準備をする
+    void    die(IObserver& observer);
 
 public:
     Connection(IRouter* router, SocketConnected* sock_given);
@@ -50,7 +55,6 @@ public:
 
     t_fd    get_fd() const;
     void    notify(IObserver& observer);
-    
 };
 
 #endif

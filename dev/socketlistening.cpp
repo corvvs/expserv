@@ -62,8 +62,12 @@ void    SocketListening::listen(int backlog) {
 
 SocketConnected*    SocketListening::accept() {
     t_fd accepted_fd = ::accept(fd, NULL, NULL);
-    // DOUT() << "accepted" << std::endl;
+
     if (accepted_fd < 0) {
+        if (errno == EWOULDBLOCK) {
+            // これ以上 acceptできない
+            return NULL;
+        }
         throw std::runtime_error("failed to accept");
     }
     return SocketConnected::wrap(accepted_fd, *this);
