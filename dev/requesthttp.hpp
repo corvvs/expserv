@@ -10,6 +10,7 @@
 # include "http.hpp"
 # include "http_error.hpp"
 # include "parserhelper.hpp"
+# include "lightstring.hpp"
 
 enum t_http_request_parse_progress {
     // 開始行の開始位置 を探している
@@ -30,8 +31,10 @@ enum t_http_request_parse_progress {
 class RequestHTTP {
 public:
     static const size_t MAX_REQLINE_END = 8192;
-    typedef HTTP::byte_string       byte_string;
-    typedef HTTP::header_dict_type  header_dict_type;
+    typedef HTTP::byte_string               byte_string;
+    typedef LightString<HTTP::byte_type>    light_string;
+    typedef std::map<byte_string, light_string>
+                                            header_dict_type;
 
 private:
     byte_string                     bytebuffer;
@@ -46,8 +49,6 @@ private:
     size_t                          end_of_header;
     size_t                          start_of_body;
     // size_t                          end_of_body;
-
-    byte_string                     raw_header;
 
     // 確定した情報
     HTTP::t_method                  http_method;
@@ -65,17 +66,18 @@ private:
 
     byte_string                     header_host;
 
+    // [パース関数群]
 
     // 開始行の開始位置を探す
-    bool    extract_reqline_start(size_t len);
+    bool    seek_reqline_start(size_t len);
     // 開始行の終了位置を探す
-    bool    extract_reqline_end(size_t len);
+    bool    seek_reqline_end(size_t len);
     // [begin, end) を要求行としてパースする
-    void    parse_reqline(const byte_string& header_line);
+    void    parse_reqline(const light_string& header_line);
     // 
     bool    extract_header_end(size_t len);
     // ヘッダ行をパースする
-    void    parse_header_line(const byte_string& header_line);
+    void    parse_header_line(const light_string& header_line);
     // ヘッダから必要な情報を取る
     void    extract_control_headers();
 
@@ -102,7 +104,7 @@ public:
     // 指定した key のヘッダーを取得する
     // - first: そのヘッダーが存在するかどうか
     // - second: そのヘッダーの value; 存在しない場合は空文字列
-    std::pair<bool, byte_string>
+    std::pair<bool, light_string>
             get_header(const byte_string& header_key) const;
 
     // リクエスト本文の開始位置

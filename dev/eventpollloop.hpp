@@ -23,10 +23,10 @@ typedef short t_poll_eventmask;
 class EventPollLoop: public IObserver {
     private:
         typedef std::vector<pollfd>                 fd_vector;
-        typedef std::map<t_fd, ISocketLike*>            socket_map;
+        typedef std::map<t_fd, ISocketLike*>        socket_map;
         typedef std::map<t_fd, int>                 index_map;
-        typedef std::set<int>                      gap_set;
-        typedef std::vector< t_socket_reservation >   update_queue;
+        typedef std::set<int>                       gap_set;
+        typedef std::vector< t_socket_reservation > update_queue;
 
         fd_vector                                   fds;
         socket_map                                  sockmap;

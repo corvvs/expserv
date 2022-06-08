@@ -38,9 +38,6 @@ void    Connection::notify(IObserver& observer) {
     // switch, try-catch は意図的にインデント崩して書いてます
     if (dying) { return; }
 
-    int fd = sock->get_fd();
-    // std::cout << "[S]" << fd << " rc: " << phase << std::endl;
-
     const size_t  read_buffer_size = RequestHTTP::MAX_REQLINE_END;
     char buf[read_buffer_size];
 
@@ -49,10 +46,10 @@ case CONNECTION_RECEIVING: {
     // [コネクション:受信モード]
 
     try {
+
         ssize_t receipt = sock->receive(&buf, read_buffer_size, 0);
         if (receipt <= 0) {
             // なにも受信できなかったか, 受信エラーが起きた場合
-            std::cout << "[S]" << fd << " * closing... *" << std::endl;
             die(observer);
             return;
         }
@@ -66,16 +63,13 @@ case CONNECTION_RECEIVING: {
 
         // リクエストの解析が完了したら応答開始
         current_res = router_->route(current_req);
-        observer.reserve_transit(this, SHMT_READ, SHMT_WRITE);
-        phase = CONNECTION_RESPONDING;
+        ready_sending(observer);
 
     } catch (http_error err) {
 
         // 受信中のHTTPエラー
-        std::cout << "[SE] catched an http error: " << err.get_status() << ": " << err.what() << std::endl;
         current_res = router_->respond_error(current_req, err);
-        observer.reserve_transit(this, SHMT_READ, SHMT_WRITE);
-        phase = CONNECTION_ERROR_RESPONDING;
+        ready_sending(observer);
 
     }
     return;
@@ -85,11 +79,13 @@ case CONNECTION_RECEIVING: {
 case CONNECTION_ERROR_RESPONDING:
 case CONNECTION_RESPONDING: {
     // [コネクション:送信モード]
+
     try {
 
-        const char *buf = current_res->get_unsent_head();
-        ssize_t sent = sock->send(buf, current_res->get_unsent_size(), 0);
-        // DSOUT() << "sending " << current_res->get_unsent_size() << "bytes, and actually sent " << sent << "bytes" << std::endl;
+        ssize_t sent = sock->send(
+            current_res->get_unsent_head(),
+            current_res->get_unsent_size(),
+            0);
 
         // 送信ができなかったか, エラーが起きた場合
         if (sent <= 0) {
@@ -104,7 +100,7 @@ case CONNECTION_RESPONDING: {
         // 送信完了
         if (current_req->should_keep_in_touch()) {
             // 接続を維持する
-            restart(observer);
+            ready_receiving(observer);
             return;
         } else {
             die(observer);
@@ -113,9 +109,8 @@ case CONNECTION_RESPONDING: {
 
     } catch (http_error err) {
 
-        // 送信中のHTTPエラー
-        DSOUT() << "[SE] catched an http error: " << err.get_status() << ": " << err.what() << std::endl;
-        restart(observer);
+        // 送信中のHTTPエラー -> もうだめ
+        die(observer);
 
     }
     return;
@@ -128,7 +123,7 @@ default: {
 }
 }
 
-void    Connection::restart(IObserver& observer) {
+void    Connection::ready_receiving(IObserver& observer) {
     delete current_res;
     delete current_req;
     current_res = NULL;
@@ -136,6 +131,12 @@ void    Connection::restart(IObserver& observer) {
     observer.reserve_transit(this, SHMT_WRITE, SHMT_READ);
     phase = CONNECTION_RECEIVING;
 }
+
+void    Connection::ready_sending(IObserver& observer) {
+    observer.reserve_transit(this, SHMT_READ, SHMT_WRITE);
+    phase = CONNECTION_RESPONDING;
+}
+
 
 void    Connection::die(IObserver& observer) {
     observer.reserve_clear(this, SHMT_WRITE);

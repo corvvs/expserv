@@ -51,18 +51,19 @@ namespace HTTP {
         V_ERROR
     };
 
+    typedef char                            byte_type;
     // バイト列
-    typedef std::basic_string<char> byte_string;
+    typedef std::basic_string<byte_type>    byte_string;
     // ヘッダのキーの型
-    typedef byte_string             header_key_type;
+    typedef byte_string                     header_key_type;
     // ヘッダの値の型
-    typedef byte_string             header_val_type;
+    typedef byte_string                     header_val_type;
     // ヘッダのキー・値の組
     typedef std::pair<header_key_type, header_val_type>
-                                    header_kvpair_type;
+                                            header_kvpair_type;
     // ヘッダを格納する辞書
     typedef std::map<header_key_type, header_val_type>
-                                    header_dict_type;
+                                            header_dict_type;
 
     // サーバのデフォルトのHTTPバージョン
     const t_version     DEFAULT_HTTP_VERSION = V_1_1;

@@ -44,7 +44,10 @@ private:
     Connection();
 
     // もう一度受信状態に戻る
-    void    restart(IObserver& observer);
+    void    ready_receiving(IObserver& observer);
+
+    // 送信状態に移る
+    void    ready_sending(IObserver& observer);
 
     // 接続を閉じる準備をする
     void    die(IObserver& observer);

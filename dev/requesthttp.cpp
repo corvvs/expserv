@@ -1,33 +1,23 @@
 #include "requesthttp.hpp"
 
-HTTP::t_method   judge_http_method(
+HTTP::t_method   discriminate_request_method(
     RequestHTTP::byte_string::iterator begin,
     RequestHTTP::byte_string::iterator end
 ) {
     RequestHTTP::byte_string sub(begin, end);
-    if (sub == "GET") {
-        return HTTP::METHOD_GET;
-    }
-    if (sub == "POST") {
-        return HTTP::METHOD_POST;
-    }
-    if (sub == "DELETE") {
-        return HTTP::METHOD_DELETE;
-    }
+    if (sub == "GET")       { return HTTP::METHOD_GET; }
+    if (sub == "POST")      { return HTTP::METHOD_POST; }
+    if (sub == "DELETE")    { return HTTP::METHOD_DELETE; }
     throw http_error("Invalid Request: unsupported method", HTTP::STATUS_METHOD_NOT_ALLOWED);
 }
 
-HTTP::t_version  judge_http_version(
+HTTP::t_version  discriminate_request_version(
     RequestHTTP::byte_string::iterator begin,
     RequestHTTP::byte_string::iterator end
 ) {
     RequestHTTP::byte_string sub(begin, end);
-    if (sub == HTTP::version_str(HTTP::V_1_0)) {
-        return HTTP::V_1_0;
-    }
-    if (sub == HTTP::version_str(HTTP::V_1_1)) {
-        return HTTP::V_1_1;
-    }
+    if (sub == HTTP::version_str(HTTP::V_1_0)) { return HTTP::V_1_0; }
+    if (sub == HTTP::version_str(HTTP::V_1_1)) { return HTTP::V_1_1; }
     throw http_error("Invalid Request: unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
@@ -38,139 +28,121 @@ RequestHTTP::RequestHTTP():
     http_version(HTTP::V_UNKNOWN)
 {
     bytebuffer.reserve(MAX_REQLINE_END);
-    // std::cout << "[R] generated" << std::endl;
 }
 
 RequestHTTP::~RequestHTTP() {}
 
 void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
     bytebuffer.insert(bytebuffer.end(), bytes, bytes + len);
-    // std::cout
-    //     << "```" << std::endl
-    //     << bytebuffer
-    //     << "```" << std::endl;
 
-    for (;len > 0; ) {
+    for (;len > 0;) {
         len = bytebuffer.length() - mid;
-        // DSOUT() << "mid: " << mid <<  ", len: " << len << std::endl;
-        // DSOUT() << "parsed: " << parsed_size() << ", receipt: " << receipt_size() << std::endl;
+
         switch (parse_progress) {
+        case PARSE_REQUEST_REQLINE_START: {
+
             // 開始行の開始位置を探す
-            case PARSE_REQUEST_REQLINE_START: {
-                if (!extract_reqline_start(len)) {
-                    return;
-                }
-                parse_progress = PARSE_REQUEST_REQLINE_END;
-                continue;
-            }
+            if (!seek_reqline_start(len)) { return; }
+            parse_progress = PARSE_REQUEST_REQLINE_END;
+
+            continue;
+        }
+
+        case PARSE_REQUEST_REQLINE_END: {
 
             // 開始行の終了位置を探す
-            case PARSE_REQUEST_REQLINE_END: {
-                if (!extract_reqline_end(len)) {
-                    return;
-                }
-                byte_string raw_req_line(
-                    bytebuffer.begin() + start_of_reqline,
-                    bytebuffer.begin() + end_of_reqline);
-                // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
-                parse_reqline(raw_req_line);
-                parse_progress = PARSE_REQUEST_HEADER;
+            if (!seek_reqline_end(len)) { return; }
+            light_string raw_req_line(
+                bytebuffer.begin() + start_of_reqline,
+                bytebuffer.begin() + end_of_reqline);
+            // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
+            parse_reqline(raw_req_line);
+            parse_progress = PARSE_REQUEST_HEADER;
+
+            continue;
+        }
+
+        case PARSE_REQUEST_HEADER: {
+
+            // ヘッダを解析する
+            ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
+            
+            mid += res.second;
+            if (res.first >= res.second) {
+                return ;
+            }
+            // CRLFが見つかった
+            // -> [mid, res.first) が1つのヘッダ
+            // DSOUT() << "[" << start_of_current_header << "," << mid - (res.second - res.first) << ")" << std::endl;
+            light_string header_line(
+                bytebuffer.begin() + start_of_current_header,
+                bytebuffer.begin() + mid - (res.second - res.first));
+            if (header_line.length() > 0) {
+                // header_line が空文字列でない
+                // -> ヘッダとしてパースを試みる
+                parse_header_line(header_line);
                 continue;
             }
+            // header_line が空文字列
+            // -> 空行が見つかったのでそこでヘッダが終わる
+            end_of_header = mid - (res.second - res.first);
+            // DSOUT() << "* determined end_of_header *" << std::endl;
+            // DSOUT() << "end_of_header: " << end_of_header << std::endl;
+            extract_control_headers();
+            start_of_body = mid;
+            parse_progress = PARSE_REQUEST_BODY;
 
-            // ヘッダの終わりを探す
-            case PARSE_REQUEST_HEADER: {
-                // DSOUT() << "* parsing header lines... *" << std::endl;
-                // DSOUT() << "end_of_reqline: " << end_of_reqline << std::endl;
-                // DSOUT() << "start_of_current_header: " << start_of_current_header << std::endl;
-                // DSOUT() << "mid: " << mid << std::endl;
-                // DSOUT() << "len: " << len << std::endl;
-                ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
-                // DSOUT() << "[" << res.first << "," << res.second << ")" << std::endl;
-                
-                mid += res.second;
-                if (res.first >= res.second) {
-                    return ;
-                }
-                // CRLFが見つかった
-                // -> [mid, res.first) が1つのヘッダ
-                // DSOUT() << "[" << start_of_current_header << "," << mid - (res.second - res.first) << ")" << std::endl;
-                byte_string header_line(
-                    bytebuffer.begin() + start_of_current_header,
-                    bytebuffer.begin() + mid - (res.second - res.first));
-                if (header_line.length() > 0) {
-                    // header_line が空文字列でない
-                    // -> ヘッダとしてパースを試みる
-                    parse_header_line(header_line);
-                    continue;
-                }
-                // header_line が空文字列
-                // -> 空行が見つかったのでそこでヘッダが終わる
-                end_of_header = mid - (res.second - res.first);
-                // DSOUT() << "* determined end_of_header *" << std::endl;
-                // DSOUT() << "end_of_header: " << end_of_header << std::endl;
-                raw_header = byte_string(
-                    bytebuffer.begin() + start_of_header,
-                    bytebuffer.begin() + end_of_header);
-                extract_control_headers();
-                start_of_body = mid;
+            continue;
+        }
 
-                parse_progress = PARSE_REQUEST_BODY;
-                continue;
-            }
+        case PARSE_REQUEST_BODY: {
 
-            case PARSE_REQUEST_BODY: {
-                // TODO: 切断対応
-                mid += len;
-                DSOUT() << "parsed_body_size: " << parsed_body_size() << std::endl;
-                DSOUT() << "start_of_body: " << start_of_body << std::endl;
-                DSOUT() << "content_length: " << content_length << std::endl;
-                // - 接続が切れていたら
-                //   -> ここまでをbodyとする
-                // - content-lengthが不定なら
-                //   -> 続行
-                // - 受信済みサイズが content-length を下回っていたら
-                //   -> 続行
-                // - (else) 受信済みサイズが content-length 以上なら
-                //   -> 受信済みサイズ = mid - start_of_body が content-length になるよう調整
-                if (parsed_body_size() < content_length) {
-                    return;
-                }
+            // TODO: 切断対応
+            mid += len;
+            // DSOUT() << "parsed_body_size: " << parsed_body_size() << std::endl;
+            // DSOUT() << "start_of_body: " << start_of_body << std::endl;
+            // DSOUT() << "content_length: " << content_length << std::endl;
+            // - 接続が切れていたら
+            //   -> ここまでをbodyとする
+            // - content-lengthが不定なら
+            //   -> 続行
+            // - 受信済みサイズが content-length を下回っていたら
+            //   -> 続行
+            // - (else) 受信済みサイズが content-length 以上なら
+            //   -> 受信済みサイズ = mid - start_of_body が content-length になるよう調整
+            if (parsed_body_size() < content_length) { return; }
 
-                mid = content_length + start_of_body;
-                parse_progress = PARSE_REQUEST_OVER;
-            }
+            mid = content_length + start_of_body;
+            parse_progress = PARSE_REQUEST_OVER;
 
-            case PARSE_REQUEST_OVER: {
-                DSOUT() << "FINISH" << std::endl;
-                return;
-            }
+            continue;
+        }
 
-            default:
-                throw http_error("not implemented yet", HTTP::STATUS_NOT_IMPLEMENTED);
+        case PARSE_REQUEST_OVER: {
+            return;
+        }
+
+        default:
+            throw http_error("not implemented yet", HTTP::STATUS_NOT_IMPLEMENTED);
         }
     }
 }
 
-bool    RequestHTTP::extract_reqline_start(size_t len) {
+bool    RequestHTTP::seek_reqline_start(size_t len) {
     DSOUT() << "* determining start_of_reqline... *" << std::endl;
     size_t s_o_s = ParserHelper::ignore_crlf(bytebuffer, mid, len);
-    // DOUT() << len << " -> " << s_o_s << std::endl;
     mid += s_o_s;
     if (s_o_s == len) {
         return false;
     }
     // 開始行の開始位置が定まった
-    // DSOUT() << "* determined start_of_reqline *" << std::endl;
     start_of_reqline = mid;
-    // DOUT() << "start_of_reqline is: " << start_of_reqline << std::endl;
     return true;
 }
 
-bool    RequestHTTP::extract_reqline_end(size_t len) {
+bool    RequestHTTP::seek_reqline_end(size_t len) {
     // DSOUT() << "* determining end_of_reqline... *" << std::endl;
     ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
-    // DSOUT() << "[" << res.first << "," << res.second << ")" << std::endl;
     mid += res.second;
     if (res.first >= res.second) { return false; }
     // CRLFが見つかった
@@ -183,7 +155,7 @@ bool    RequestHTTP::extract_reqline_end(size_t len) {
     return true;
 }
 
-void    RequestHTTP::parse_reqline(const byte_string& raw_req_line) {
+void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
     // DSOUT() << "* determined end_of_reqline *" << std::endl;
     // DSOUT() << "end_of_reqline: " << end_of_reqline << std::endl;
     // DSOUT() << "start_of_header: " << start_of_header << std::endl;
@@ -198,13 +170,13 @@ void    RequestHTTP::parse_reqline(const byte_string& raw_req_line) {
             // HTTP/0.9?
             // HTTP/1.*?
 
-            http_method = judge_http_method(splitted[0].begin(), splitted[0].end());
+            http_method = discriminate_request_method(splitted[0].begin(), splitted[0].end());
             DSOUT() << byte_string(splitted[0].begin(), splitted[0].end()) << " -> http_method: " << http_method << std::endl;
             request_path = splitted[1];
             DSOUT() << "request_path: " << request_path << std::endl;
             DSOUT() << "\"" << byte_string(splitted[2].begin(), splitted[2].end()) << "\"" << std::endl;
             if (splitted.size() == 3) {
-                http_version = judge_http_version(splitted[2].begin(), splitted[2].end());
+                http_version = discriminate_request_version(splitted[2].begin(), splitted[2].end());
             } else {
                 http_version = HTTP::V_0_9;
             }
@@ -228,7 +200,7 @@ bool    RequestHTTP::extract_header_end(size_t len) {
     return true;
 }
 
-void    RequestHTTP::parse_header_line(const byte_string& header_line) {
+void    RequestHTTP::parse_header_line(const light_string& header_line) {
     // ヘッダを解析する
     start_of_current_header = mid;
     // DSOUT()
@@ -246,8 +218,8 @@ void    RequestHTTP::parse_header_line(const byte_string& header_line) {
     }
     // ":"があった
     // -> ":"の前後をキーとバリューにする
-    byte_string header_key(header_line.begin(), header_line.begin() + coron_pos);
-    byte_string header_value(header_line.begin() + coron_pos + 1, header_line.end());
+    light_string header_key(header_line.begin(), header_line.begin() + coron_pos);
+    light_string header_value(header_line.begin() + coron_pos + 1, header_line.end());
     // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。 串は、下流に転送する前に空白を削除しなければなりません。
     if (header_key.length() == 0) {
         throw http_error("Invalid Request: header key is empty", HTTP::STATUS_BAD_REQUEST);
@@ -263,16 +235,23 @@ void    RequestHTTP::parse_header_line(const byte_string& header_line) {
         // Valueが空 -> エラーではない
         header_value = "";
     } else {
-        header_value = header_value.substr(header_value_head, header_value_tail + 1);
+        header_value = header_value.substr(header_value_head, header_value_tail - header_value_head + 1);
     }
-    
+    // DSOUT() << "[" << header_value_head << "," << header_value_tail << ")" << std::endl;
+    // DSOUT() << "header_key: " << header_key.str() << std::endl;
+    // DSOUT() << "header_value: " << header_value.str() << "," << header_value.length() << std::endl;
 
     // Keyの正規化
-    byte_string normalized_header_key(header_key);
+    byte_string normalized_header_key(header_key.str());
     for (byte_string::iterator it = normalized_header_key.begin(); it != normalized_header_key.end(); it++) {
         *it = tolower(*it);
     }
-    std::pair<std::map< byte_string, byte_string >::iterator, bool> res_insertion = header_dict.insert(std::pair<byte_string, byte_string>(normalized_header_key, header_value));
+    std::pair<
+        std::map< byte_string, light_string>::iterator,
+        bool
+    > res_insertion = header_dict.insert(
+        std::pair<byte_string, light_string>(normalized_header_key, header_value.str())
+    );
     if (res_insertion.second) {
         header_keys.push_back(normalized_header_key);
     }
@@ -287,7 +266,7 @@ void    RequestHTTP::parse_header_line(const byte_string& header_line) {
 
 void    RequestHTTP::extract_control_headers() {
     // - host
-    header_host = header_dict["host"];
+    header_host = header_dict["host"].str();
     if (header_host.length() == 0) {
         // host が空
         // 1.1ならbad request
@@ -304,7 +283,7 @@ void    RequestHTTP::extract_control_headers() {
             break;
         }
         default: {
-            byte_string cl = header_dict["content-length"];
+            byte_string cl = header_dict["content-length"].str();
             if (cl == "") {
                 content_length = -1;
             } else {
@@ -339,13 +318,13 @@ HTTP::t_version RequestHTTP::get_http_version() const {
     return http_version;
 }
 
-std::pair<bool, RequestHTTP::byte_string>
+std::pair<bool, RequestHTTP::light_string>
                 RequestHTTP::get_header(const byte_string& header_key) const {
     header_dict_type::const_iterator result = header_dict.find(header_key);
     if (result == header_dict.end()) {
-        return std::pair<bool, RequestHTTP::byte_string>(false, "");
+        return std::pair<bool, light_string>(false, light_string(""));
     }
-    return std::pair<bool, RequestHTTP::byte_string>(true, result->second);
+    return std::pair<bool, light_string>(true, result->second);
 }
 
 RequestHTTP::byte_string::const_iterator

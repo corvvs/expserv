@@ -18,8 +18,8 @@ class ISocketLike;
 // kqueueを使ったソケット監視者の実装
 class EventKqueueLoop: public IObserver {
     private:
-        typedef std::map<t_fd, ISocketLike*>            socket_map;
-        typedef std::vector< t_socket_reservation >   update_queue;
+        typedef std::map<t_fd, ISocketLike*>        socket_map;
+        typedef std::vector< t_socket_reservation > update_queue;
         typedef struct kevent                       t_kevent;
         typedef std::vector< t_kevent >             event_list;
         typedef short                               t_kfilter;
@@ -33,15 +33,8 @@ class EventKqueueLoop: public IObserver {
 
         t_kfilter   filter(t_socket_operation t);
 
-        void    prepare_fd_set(socket_map& sockmap, fd_set *sockset);
-        void    scan_fd_set(socket_map& sockmap, fd_set *sockset);
         void    reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
         void    update();
-
-        void    watch(ISocketLike* socket, t_socket_operation map_type);
-        void    unwatch(ISocketLike* socket, t_socket_operation map_type);
-
-        void    destroy_all(socket_map &m);
 
     public:
         EventKqueueLoop();
