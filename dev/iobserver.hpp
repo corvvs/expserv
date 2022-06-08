@@ -1,6 +1,7 @@
 #ifndef IPANOPTICON_HPP
 # define IPANOPTICON_HPP
 # include "isocketlike.hpp"
+# include "time.hpp"
 
 // [ソケット監視者インターフェース]
 // [責務]

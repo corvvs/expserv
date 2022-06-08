@@ -19,12 +19,21 @@ void    EventPollLoop::loop() {
 
         if (count < 0) {
             throw std::runtime_error("poll error");
-        }
-        for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
-            int i = indexmap[it->first];
-            if (fds[i].fd >= 0 && fds[i].revents) {
-                std::cout << "[S]FD-" << it->first << ": revents: " << fds[i].revents << std::endl;
-                it->second->notify(*this);
+        } else if (count == 0) {
+            t_time_epoch_ms now = WSTime::get_epoch_ms();
+            for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
+                int i = indexmap[it->first];
+                if (fds[i].fd >= 0) {
+                    it->second->timeout(*this, now);
+                }
+            }
+        } else {
+            for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
+                int i = indexmap[it->first];
+                if (fds[i].fd >= 0 && fds[i].revents) {
+                    std::cout << "[S]FD-" << it->first << ": revents: " << fds[i].revents << std::endl;
+                    it->second->notify(*this);
+                }
             }
         }
     }

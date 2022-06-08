@@ -40,6 +40,7 @@ public:
 
     t_fd            get_fd() const;
     void            notify(IObserver& observer);
+    void            timeout(IObserver& observer, t_time_epoch_ms epoch);
 
     t_channel_id    get_id() const;
 };

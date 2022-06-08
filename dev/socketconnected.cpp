@@ -78,3 +78,7 @@ ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) {
 ssize_t SocketConnected::receive(void *buffer, size_t len, int flags) {
     return ::recv(fd, buffer, len, flags);
 }
+
+int SocketConnected::shutdown() {
+    return ::shutdown(get_fd(), SHUT_RDWR);
+}

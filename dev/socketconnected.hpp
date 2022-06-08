@@ -41,6 +41,8 @@ public:
 
     ssize_t send(const void *buffer, size_t len, int flags);
     ssize_t receive(void *buffer, size_t len, int flags);
+
+    int     shutdown();
 };
 
 #endif

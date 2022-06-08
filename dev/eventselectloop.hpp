@@ -26,7 +26,7 @@ class EventSelectLoop: public IObserver {
         update_queue                    up_queue;
 
         void    prepare_fd_set(socket_map& sockmap, fd_set *sockset);
-        void    scan_fd_set(socket_map& sockmap, fd_set *sockset);
+        void    scan_fd_set(socket_map& sockmap, fd_set *sockset, t_time_epoch_ms now);
         void    reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to);
         void    update();
 

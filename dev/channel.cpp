@@ -43,6 +43,13 @@ void    Channel::notify(IObserver& observer) {
     }
 }
 
+void    Channel::timeout(IObserver& observer, t_time_epoch_ms epoch) {
+    // * DO NOTHING *
+    (void)observer;
+    (void)epoch;
+    DSOUT() << "* DO NOTHING *: " << get_fd() << std::endl;
+}
+
 Channel::t_channel_id   Channel::get_id() const {
     return Channel::t_channel_id(sock->get_domain(), sock->get_port());
 }

@@ -17,10 +17,12 @@ Connection::Connection(
     dying(false),
     sock(sock_given),
     current_req(NULL),
-    current_res(NULL)
+    current_res(NULL),
+    latest_operated_at(0)
 {
     started_ = started++;
     DSOUT() << "started_: " << started_ << std::endl;
+    touch();
 }
 
 Connection::~Connection() {
@@ -53,6 +55,7 @@ case CONNECTION_RECEIVING: {
             die(observer);
             return;
         }
+        touch();
 
         if (current_req == NULL) {
             // リクエストオブジェクトを作成して解析開始
@@ -93,7 +96,7 @@ case CONNECTION_RESPONDING: {
             die(observer);
             return;
         }
-
+        touch();
         current_res->mark_sent(sent);
         if (!current_res->is_over_sending()) { return; }
 
@@ -123,6 +126,20 @@ default: {
 }
 }
 
+void    Connection::timeout(IObserver& observer, t_time_epoch_ms epoch) {
+    if (dying) { return; }
+    if (epoch - latest_operated_at < 60 * 1000) { return; }
+    // タイムアウト処理
+    DSOUT() << "timeout!!: " << get_fd() << std::endl;
+    die(observer);
+}
+
+void    Connection::touch() {
+    t_time_epoch_ms t = WSTime::get_epoch_ms();
+    DSOUT() << "operated_at: " << latest_operated_at << " -> " << t << std::endl;
+    latest_operated_at = t;
+}
+
 void    Connection::ready_receiving(IObserver& observer) {
     delete current_res;
     delete current_req;
@@ -140,5 +157,6 @@ void    Connection::ready_sending(IObserver& observer) {
 
 void    Connection::die(IObserver& observer) {
     observer.reserve_clear(this, SHMT_WRITE);
+    sock->shutdown();
     dying = true;
 }

@@ -36,12 +36,17 @@ private:
 
     RequestHTTP*        current_req;
     ResponseHTTP*       current_res;
+    // 最終操作時刻
+    t_time_epoch_ms     latest_operated_at;
 
     int                 started_;
 
     // 直接呼び出し禁止
     // ConnectionオブジェクトはChannelオブジェクトによってのみ作成されて欲しいため
     Connection();
+
+    // 最終操作時刻を更新する
+    void    touch();
 
     // もう一度受信状態に戻る
     void    ready_receiving(IObserver& observer);
@@ -58,6 +63,7 @@ public:
 
     t_fd    get_fd() const;
     void    notify(IObserver& observer);
+    void    timeout(IObserver& observer, t_time_epoch_ms epoch);
 };
 
 #endif

@@ -35,11 +35,19 @@ void    EventKqueueLoop::loop() {
     while (1) {
         update();
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
-
-        for (int i = 0; i < count; i++) {
-            int fd = evlist[i].ident;
-            ISocketLike* sock = sockmap[fd];
-            sock->notify(*this);
+        if (count == 0) {
+            t_time_epoch_ms now = WSTime::get_epoch_ms();
+            for (int i = 0; i < count; i++) {
+                int fd = evlist[i].ident;
+                ISocketLike* sock = sockmap[fd];
+                sock->timeout(*this, now);
+            }
+        } else {
+            for (int i = 0; i < count; i++) {
+                int fd = evlist[i].ident;
+                ISocketLike* sock = sockmap[fd];
+                sock->notify(*this);
+            }
         }
     }
 }

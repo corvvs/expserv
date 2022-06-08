@@ -8,7 +8,7 @@ HTTP::t_method   discriminate_request_method(
     if (sub == "GET")       { return HTTP::METHOD_GET; }
     if (sub == "POST")      { return HTTP::METHOD_POST; }
     if (sub == "DELETE")    { return HTTP::METHOD_DELETE; }
-    throw http_error("Invalid Request: unsupported method", HTTP::STATUS_METHOD_NOT_ALLOWED);
+    throw http_error("unsupported method", HTTP::STATUS_METHOD_NOT_ALLOWED);
 }
 
 HTTP::t_version  discriminate_request_version(
@@ -18,7 +18,7 @@ HTTP::t_version  discriminate_request_version(
     RequestHTTP::byte_string sub(begin, end);
     if (sub == HTTP::version_str(HTTP::V_1_0)) { return HTTP::V_1_0; }
     if (sub == HTTP::version_str(HTTP::V_1_1)) { return HTTP::V_1_1; }
-    throw http_error("Invalid Request: unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
+    throw http_error("unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
 RequestHTTP::RequestHTTP():
@@ -183,7 +183,7 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
             break;
         }
         default:
-            throw std::runtime_error("Invalid Request: invalid request-line?");
+            throw http_error("invalid request-line?", HTTP::STATUS_BAD_REQUEST);
     }
     DSOUT() << "* parsed reqline *" << std::endl;
     start_of_current_header = mid;
@@ -200,21 +200,20 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
 
     light_string::size_type  coron_pos = line.find_first_of(ParserHelper::HEADER_KV_SPLITTER);
     if (coron_pos == byte_string::npos) {
-        // ":"がない -> おかしなヘッダ
         // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx は無視して処理を続けます。
-        throw http_error("Invalid Request: header does not contain a coron", HTTP::STATUS_BAD_REQUEST);
+        throw http_error("no coron in a head line", HTTP::STATUS_BAD_REQUEST);
     }
 
     // ":"があった -> ":"の前後をキーとバリューにする
     light_string key(line.begin(), line.begin() + coron_pos);
     if (key.length() == 0) {
-        throw http_error("Invalid Request: header key is empty", HTTP::STATUS_BAD_REQUEST);
+        throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
     }
     light_string val(line.begin() + coron_pos + 1, line.end());
     // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。 串は、下流に転送する前に空白を削除しなければなりません。
     light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
     if (key_tail + 1 != key.length()) {
-        throw http_error("Invalid Request: trailing space on header key", HTTP::STATUS_BAD_REQUEST);
+        throw http_error("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
     }
     // [!] 欄値の前後の OWS は、欄値の一部ではなく、 構文解析の際に削除します
     light_string::size_type val_head = val.find_first_not_of(ParserHelper::OWS);
@@ -236,13 +235,13 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
     if (res_insertion.second) {
         header_keys.push_back(norm_key);
     }
-    // DSOUT()
-    //     << "* splitted a header *"
-    //     << std::endl
-    //     << "Key: " << key
-    //     << std::endl
-    //     << "Val: " << header_value
-    //     << std::endl;
+    DSOUT()
+        << "* splitted a header *"
+        << std::endl
+        << "Key: " << key.str()
+        << std::endl
+        << "Val: " << val.str()
+        << std::endl;
 }
 
 void    RequestHTTP::extract_control_headers() {
@@ -251,7 +250,7 @@ void    RequestHTTP::extract_control_headers() {
     if (header_host.length() == 0) {
         // host が空
         // 1.1ならbad request
-        throw http_error("Invalid Request: no host", HTTP::STATUS_BAD_REQUEST);
+        throw http_error("no host", HTTP::STATUS_BAD_REQUEST);
     }
     // DSOUT() << "host is: " << header_host << std::endl;
     // - content-length

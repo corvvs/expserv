@@ -10,6 +10,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					requesthttp.cpp\
 					responsehttp.cpp\
 					parserhelper.cpp\
+					time.cpp\
 					http_error.cpp\
 					http.cpp\
 					httpserver.cpp\
@@ -19,7 +20,6 @@ OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
 SRCS_CLIENT		:=	client.cpp asocket.cpp\
 					socketlistening.cpp\
 					socketconnected.cpp\
-					eventselectloop.cpp\
 					test_common.cpp
 OBJS_CLIENT		:=	$(SRCS_CLIENT:.cpp=.o)
 

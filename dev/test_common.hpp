@@ -4,17 +4,20 @@
 # include <iostream>
 # include <string>
 # include <cstdlib>
-# define DSOUT() debug_out(__FILE__, __LINE__)
-# define DOUT()  debug_err(__FILE__, __LINE__)
+// TODO: この辺レギュレーション的に使えないので注意
+# define DSOUT() debug_out(__FILE__, __LINE__, __func__)
+# define DOUT()  debug_err(__FILE__, __LINE__, __func__)
 
 std::ostream&   debug_out(
     const char *filename,
-    const int linenumber
+    const int linenumber,
+    const char *func
 );
 
 std::ostream&   debug_err(
     const char *filename,
-    const int linenumber
+    const int linenumber,
+    const char *func
 );
 
 #endif

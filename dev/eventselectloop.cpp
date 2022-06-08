@@ -57,10 +57,14 @@ void    EventSelectLoop::prepare_fd_set(socket_map& sockmap, fd_set *sockset) {
 
 // sockmap 中のソケットがFD集合 socketset に含まれるかどうかを調べ,
 // 含まれている場合はソケットの notify メソッドを実行する
-void    EventSelectLoop::scan_fd_set(socket_map& sockmap, fd_set *sockset) {
+void    EventSelectLoop::scan_fd_set(socket_map& sockmap, fd_set *sockset, t_time_epoch_ms now) {
     for (EventSelectLoop::socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
-        if (FD_ISSET(it->first, sockset)) {
-            it->second->notify(*this);
+        if (now == 0) {
+                it->second->timeout(*this, now);
+        } else {
+            if (FD_ISSET(it->first, sockset)) {
+                it->second->notify(*this);
+            }
         }
     }
 }
@@ -95,11 +99,19 @@ void    EventSelectLoop::loop() {
 
         int count = select( max_fd + 1, &read_set, &write_set, &exception_set, &tv);
         if (count < 0) {
+            DSOUT() << strerror(errno) << std::endl;
             throw std::runtime_error("select error");
+        } else if (count == 0) {
+            t_time_epoch_ms now = WSTime::get_epoch_ms();
+            DSOUT() << "timeout?: " << now << std::endl;
+            scan_fd_set(read_map, &read_set, now);
+            scan_fd_set(write_map, &write_set, now);
+            scan_fd_set(exception_map, &exception_set, now);
+        } else {
+            scan_fd_set(read_map, &read_set, 0);
+            scan_fd_set(write_map, &write_set, 0);
+            scan_fd_set(exception_map, &exception_set, 0);
         }
-        scan_fd_set(read_map, &read_set);
-        scan_fd_set(write_map, &write_set);
-        scan_fd_set(exception_map, &exception_set);
     }
 }
 
