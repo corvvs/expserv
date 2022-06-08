@@ -32,6 +32,7 @@ class RequestHTTP {
 public:
     static const size_t MAX_REQLINE_END = 8192;
     typedef HTTP::byte_string               byte_string;
+    // 他の byte_string の一部分を参照する軽量 string
     typedef LightString<HTTP::byte_type>    light_string;
     typedef std::map<byte_string, light_string>
                                             header_dict_type;
@@ -73,11 +74,9 @@ private:
     // 開始行の終了位置を探す
     bool    seek_reqline_end(size_t len);
     // [begin, end) を要求行としてパースする
-    void    parse_reqline(const light_string& header_line);
-    // 
-    bool    extract_header_end(size_t len);
+    void    parse_reqline(const light_string& line);
     // ヘッダ行をパースする
-    void    parse_header_line(const light_string& header_line);
+    void    parse_header_line(const light_string& line);
     // ヘッダから必要な情報を取る
     void    extract_control_headers();
 
@@ -104,8 +103,8 @@ public:
     // 指定した key のヘッダーを取得する
     // - first: そのヘッダーが存在するかどうか
     // - second: そのヘッダーの value; 存在しない場合は空文字列
-    std::pair<bool, light_string>
-            get_header(const byte_string& header_key) const;
+    std::pair<light_string, bool>
+            get_header(const byte_string& key) const;
 
     // リクエスト本文の開始位置
     byte_string::const_iterator

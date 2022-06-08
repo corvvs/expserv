@@ -13,6 +13,7 @@ public:
     typedef typename string_class::iterator         iterator;
     typedef typename string_class::const_iterator   const_iterator;
     typedef typename string_class::size_type        size_type;
+    static const typename string_class::size_type   npos = string_class::npos;
 
 private:
     const_iterator  first;
@@ -20,9 +21,7 @@ private:
 
 public:
     LightString() {
-        std::string str;
-        first = str.begin();
-        last = str.end();
+        first = last;
     }
 
     LightString(const std::string& str):
@@ -38,6 +37,7 @@ public:
     }
 
     string_class    str() const {
+        if (first == last) { return ""; }
         return string_class(first, last);
     }
 

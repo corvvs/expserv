@@ -41,7 +41,9 @@ namespace ParserHelper {
         byte_string::const_iterator last
     );
 
-    // HTTPヘッダ key が「リスト」かどうかを返す
+    void        normalize_header_key(byte_string& key);
+
+    // predicate: HTTPヘッダ key が「リスト」かどうかを返す
     bool        is_listing_header(const byte_string& key);
 
     // string to size_t 変換

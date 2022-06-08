@@ -100,6 +100,13 @@ std::vector< ParserHelper::byte_string >  ParserHelper::split_by_sp(
     return rv;
 }
 
+void    ParserHelper::normalize_header_key(byte_string& key) {
+    for (byte_string::iterator it = key.begin(); it != key.end(); it++) {
+        *it = tolower(*it);
+    }
+}
+
+
 bool    ParserHelper::is_listing_header(const byte_string& key) {
     if (key == "set-cookie") { return true; }
     return false;
@@ -107,13 +114,12 @@ bool    ParserHelper::is_listing_header(const byte_string& key) {
 
 unsigned int    ParserHelper::stou(const byte_string& str) {
     std::stringstream   ss;
-    ss << str;
-    unsigned int        v;
-    ss >> v;
-    ss.clear();
-    ss << v;
     byte_string         r;
-    ss >> r;
+    unsigned int        v;
+
+    ss << str; ss >> v;
+    ss.clear();
+    ss << v; ss >> r;
     if (str != r) {
         throw std::runtime_error("failed to convert string to int");
     }

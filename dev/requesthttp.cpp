@@ -171,16 +171,15 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
             // HTTP/1.*?
 
             http_method = discriminate_request_method(splitted[0].begin(), splitted[0].end());
-            DSOUT() << byte_string(splitted[0].begin(), splitted[0].end()) << " -> http_method: " << http_method << std::endl;
+            DSOUT() << splitted[0] << " -> http_method: " << http_method << std::endl;
             request_path = splitted[1];
             DSOUT() << "request_path: " << request_path << std::endl;
-            DSOUT() << "\"" << byte_string(splitted[2].begin(), splitted[2].end()) << "\"" << std::endl;
             if (splitted.size() == 3) {
                 http_version = discriminate_request_version(splitted[2].begin(), splitted[2].end());
             } else {
                 http_version = HTTP::V_0_9;
             }
-            DSOUT() << "http_version: " << http_version << std::endl;
+            DSOUT() << splitted[2] << " -> http_version: " << http_version << std::endl;
             break;
         }
         default:
@@ -190,75 +189,57 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
     start_of_current_header = mid;
 }
 
-bool    RequestHTTP::extract_header_end(size_t len) {
-    ParserHelper::index_range res = ParserHelper::find_blank_line(bytebuffer, mid, len);
-    DSOUT() << "res: [" << res.first << "," << res.second << ")" << std::endl;
-    mid += res.second;
-    if (res.first >= res.second) { return false; }
-    end_of_header = mid - (res.second - res.first);
-    start_of_body = mid;
-    return true;
-}
-
-void    RequestHTTP::parse_header_line(const light_string& header_line) {
+void    RequestHTTP::parse_header_line(const light_string& line) {
     // ヘッダを解析する
     start_of_current_header = mid;
     // DSOUT()
     //     << "found a header: "
     //     << std::endl
-    //     << header_line
+    //     << line
     //     << std::endl;
 
-    byte_string::size_type  coron_pos = header_line.find_first_of(ParserHelper::HEADER_KV_SPLITTER);
+    light_string::size_type  coron_pos = line.find_first_of(ParserHelper::HEADER_KV_SPLITTER);
     if (coron_pos == byte_string::npos) {
-        // ":"がない
-        // -> おかしなヘッダ
+        // ":"がない -> おかしなヘッダ
         // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx は無視して処理を続けます。
         throw http_error("Invalid Request: header does not contain a coron", HTTP::STATUS_BAD_REQUEST);
     }
-    // ":"があった
-    // -> ":"の前後をキーとバリューにする
-    light_string header_key(header_line.begin(), header_line.begin() + coron_pos);
-    light_string header_value(header_line.begin() + coron_pos + 1, header_line.end());
-    // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。 串は、下流に転送する前に空白を削除しなければなりません。
-    if (header_key.length() == 0) {
+
+    // ":"があった -> ":"の前後をキーとバリューにする
+    light_string key(line.begin(), line.begin() + coron_pos);
+    if (key.length() == 0) {
         throw http_error("Invalid Request: header key is empty", HTTP::STATUS_BAD_REQUEST);
     }
-    byte_string::size_type header_key_tail = header_key.find_last_not_of(ParserHelper::OWS);
-    if (header_key_tail + 1 != header_key.length()) {
-        throw http_error("Invalid Request: found space between header key and coron", HTTP::STATUS_BAD_REQUEST);
+    light_string val(line.begin() + coron_pos + 1, line.end());
+    // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。 串は、下流に転送する前に空白を削除しなければなりません。
+    light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
+    if (key_tail + 1 != key.length()) {
+        throw http_error("Invalid Request: trailing space on header key", HTTP::STATUS_BAD_REQUEST);
     }
     // [!] 欄値の前後の OWS は、欄値の一部ではなく、 構文解析の際に削除します
-    byte_string::size_type header_value_head = header_value.find_first_not_of(ParserHelper::OWS);
-    byte_string::size_type header_value_tail = header_value.find_last_not_of(ParserHelper::OWS);
-    if (header_value_head == header_value_tail) {
+    light_string::size_type val_head = val.find_first_not_of(ParserHelper::OWS);
+    light_string::size_type val_tail = val.find_last_not_of(ParserHelper::OWS);
+    if (val_head == light_string::npos) {
         // Valueが空 -> エラーではない
-        header_value = "";
+        val = "";
     } else {
-        header_value = header_value.substr(header_value_head, header_value_tail - header_value_head + 1);
+        val = val.substr(val_head, val_tail - val_head + 1);
     }
-    // DSOUT() << "[" << header_value_head << "," << header_value_tail << ")" << std::endl;
-    // DSOUT() << "header_key: " << header_key.str() << std::endl;
-    // DSOUT() << "header_value: " << header_value.str() << "," << header_value.length() << std::endl;
 
-    // Keyの正規化
-    byte_string normalized_header_key(header_key.str());
-    for (byte_string::iterator it = normalized_header_key.begin(); it != normalized_header_key.end(); it++) {
-        *it = tolower(*it);
-    }
-    std::pair<
-        std::map< byte_string, light_string>::iterator,
-        bool
-    > res_insertion = header_dict.insert(
-        std::pair<byte_string, light_string>(normalized_header_key, header_value.str())
-    );
+    // Keyの正規化; 変更するので light_string にしない
+    byte_string norm_key(key.str());
+    ParserHelper::normalize_header_key(norm_key);
+    std::pair<header_dict_type::iterator, bool> res_insertion
+        = header_dict.insert(
+            header_dict_type::value_type(norm_key, val)
+        );
     if (res_insertion.second) {
-        header_keys.push_back(normalized_header_key);
+        header_keys.push_back(norm_key);
     }
     // DSOUT()
     //     << "* splitted a header *"
     //     << std::endl
-    //     << "Key: " << header_key
+    //     << "Key: " << key
     //     << std::endl
     //     << "Val: " << header_value
     //     << std::endl;
@@ -318,13 +299,13 @@ HTTP::t_version RequestHTTP::get_http_version() const {
     return http_version;
 }
 
-std::pair<bool, RequestHTTP::light_string>
-                RequestHTTP::get_header(const byte_string& header_key) const {
-    header_dict_type::const_iterator result = header_dict.find(header_key);
+std::pair<RequestHTTP::light_string, bool>
+                RequestHTTP::get_header(const byte_string& key) const {
+    header_dict_type::const_iterator result = header_dict.find(key);
     if (result == header_dict.end()) {
-        return std::pair<bool, light_string>(false, light_string(""));
+        return std::pair<light_string, bool>(light_string(""), false);
     }
-    return std::pair<bool, light_string>(true, result->second);
+    return std::pair<light_string, bool>(result->second, true);
 }
 
 RequestHTTP::byte_string::const_iterator
