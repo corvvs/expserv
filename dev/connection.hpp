@@ -38,6 +38,8 @@ private:
     ResponseHTTP*       current_res;
     // 最終操作時刻
     t_time_epoch_ms     latest_operated_at;
+    // タイムアウト; 設定で変えるようになるはず?
+    t_time_epoch_ms     connection_timeout;
 
     int                 started_;
 
