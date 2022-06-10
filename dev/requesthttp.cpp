@@ -53,8 +53,9 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
             // 開始行の終了位置を探す
             if (!seek_reqline_end(len)) { return; }
             light_string raw_req_line(
-                bytebuffer.begin() + start_of_reqline,
-                bytebuffer.begin() + end_of_reqline);
+                bytebuffer,
+                start_of_reqline,
+                end_of_reqline);
             // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
             parse_reqline(raw_req_line);
             parse_progress = PARSE_REQUEST_HEADER;
@@ -75,8 +76,9 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
             // -> [mid, res.first) が1つのヘッダ
             // DSOUT() << "[" << start_of_current_header << "," << mid - (res.second - res.first) << ")" << std::endl;
             light_string header_line(
-                bytebuffer.begin() + start_of_current_header,
-                bytebuffer.begin() + mid - (res.second - res.first));
+                bytebuffer,
+                start_of_current_header,
+                mid - (res.second - res.first));
             if (header_line.length() > 0) {
                 // header_line が空文字列でない
                 // -> ヘッダとしてパースを試みる
@@ -205,11 +207,11 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
     }
 
     // ":"があった -> ":"の前後をキーとバリューにする
-    light_string key(line.begin(), line.begin() + coron_pos);
+    light_string key(line, 0, coron_pos);
     if (key.length() == 0) {
         throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
     }
-    light_string val(line.begin() + coron_pos + 1, line.end());
+    light_string val(line, coron_pos + 1, line.length());
     // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。 串は、下流に転送する前に空白を削除しなければなりません。
     light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
     if (key_tail + 1 != key.length()) {

@@ -3,11 +3,14 @@
 # include <string>
 # include <algorithm>
 
+const std::string blank_str = "";
+
 // 別のstringの一部分をiteratorペアとして参照する軽量string
 // C++17以降にある string_view と思えば良いか
 template <class T>
 class LightString {
 public:
+
     typedef T                                       element;
     typedef std::basic_string<T>                    string_class;
     typedef typename string_class::iterator         iterator;
@@ -16,57 +19,74 @@ public:
     static const typename string_class::size_type   npos = string_class::npos;
 
 private:
-    const_iterator  first;
-    const_iterator  last;
+
+    const string_class& base;
+    size_type           first;
+    size_type           last;
 
 public:
-    LightString() {
+
+    LightString(): base(blank_str) {
         first = last;
     }
 
-    LightString(const std::string& str):
-        first(str.begin()), last(str.end()) {}
+    LightString(const string_class& str):
+        base(str), first(0), last(str.length()) {}
 
-    LightString(const_iterator f, const_iterator l):
-        first(f), last(l) {}
+    LightString(const string_class& str, const_iterator f, const_iterator l):
+        base(str), first(std::distance(str.begin(), f)), last(std::distance(str.begin(), l)) {}
+
+    LightString(const string_class& str, size_type fi, size_type li):
+        base(str), first(fi), last(li) {}
+
+    LightString(const LightString& lstr, size_type fi, size_type li):
+        base(lstr.base), first(lstr.first + fi), last(lstr.first + li) {}
+
+    LightString& operator=(const LightString& rhs) {
+        const_cast<string_class&>(base) = rhs.base;
+        first = rhs.first;
+        last = rhs.last;
+        return *this;
+    }
 
     LightString& operator=(const string_class& rhs) {
-        first = rhs.begin();
-        last = rhs.end();
+        const_cast<string_class&>(base) = rhs;
+        first = 0;
+        last = rhs.length();
         return *this;
     }
 
     string_class    str() const {
         if (first == last) { return ""; }
-        return string_class(first, last);
+        return string_class(base.begin() + first, base.begin() + last);
     }
 
     size_type       size() const {
-        return std::distance(first, last);
+        return last - first;
     }
 
     size_type       length() const {
-        return std::distance(first, last);
+        return last - first;
     }
 
     iterator        begin() {
-        return first;
+        return base.begin() + first;
     }
 
     const_iterator  begin() const {
-        return first;
+        return base.begin() + first;
     }
 
     iterator        end() {
-        return last;
+        return base.begin() + last;
     }
 
     const_iterator  end() const {
-        return last;
+        return base.begin() + last;
     }
 
     size_type       find_first_of(const string_class& str, size_type pos = 0) const {
-        size_type d = std::distance(first, last);
+        size_type d = length();
         if (pos >= d) {
             return std::string::npos;
         }
@@ -74,36 +94,36 @@ public:
         if (it == end()) {
             return std::string::npos;
         }
-        return std::distance(first, it);
+        return std::distance(begin(), it);
     }
 
     size_type       find_first_not_of(const string_class& str, size_type pos = 0) const {
-        size_type d = std::distance(first, last);
+        size_type d = length();
         if (pos >= d) {
             return std::string::npos;
         }
         if (first == last) {
             return std::string::npos;
         }
-        for (const_iterator it = first; it != last; ++it) {
+        for (const_iterator it = begin(); it != end(); ++it) {
             if (str.find_first_of(*it) == std::string::npos) {
-                return std::distance(first, it);
+                return std::distance(begin(), it);
             }
         }
         return std::string::npos;
     }
 
     size_type       find_last_not_of(const string_class& str, size_type pos = 0) const {
-        size_type d = std::distance(first, last);
+        size_type d = length();
         if (pos >= d) {
             return std::string::npos;
         }
         if (first == last) {
             return std::string::npos;
         }
-        for (const_iterator it = last; --it != first;) {
+        for (const_iterator it = end(); --it != begin();) {
             if (str.find_first_of(*it) == std::string::npos) {
-                return std::distance(first, it);
+                return std::distance(begin(), it);
             }
         }
         return std::string::npos;
@@ -111,13 +131,13 @@ public:
 
     LightString substr(size_type pos = 0, size_type n = std::string::npos) const {
         if (n == std::string::npos) {
-            return LightString(first + pos, last);
+            return LightString(base, begin() + pos, end());
         }
         size_type   rlen = size() - pos;
         if (rlen < n) {
             rlen = n;
         }
-        return LightString(first + pos, first + pos + rlen);
+        return LightString(base, begin() + pos, begin() + pos + rlen);
     }
 };
 
