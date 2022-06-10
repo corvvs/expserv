@@ -43,6 +43,8 @@ public:
     ssize_t receive(void *buffer, size_t len, int flags);
 
     int     shutdown();
+    int     shutdown_write();
+    int     shutdown_read();
 };
 
 #endif

@@ -107,13 +107,31 @@ case CONNECTION_RESPONDING: {
             ready_receiving(observer);
             return;
         } else {
-            die(observer);
+            ready_shutting_down(observer);
+            // die(observer);
             return;
         }
 
     } catch (http_error err) {
 
         // 送信中のHTTPエラー -> もうだめ
+        die(observer);
+
+    }
+    return;
+}
+
+case CONNECTION_SHUTTING_DOWN: {
+    // [graceful切断モード]
+
+    try {
+
+        ssize_t receipt = sock->receive(&buf, read_buffer_size, 0);
+        if (receipt > 0) { return; }
+        die(observer);
+
+    } catch (http_error err) {
+
         die(observer);
 
     }
@@ -155,9 +173,24 @@ void    Connection::ready_sending(IObserver& observer) {
     phase = CONNECTION_RESPONDING;
 }
 
+void    Connection::ready_shutting_down(IObserver& observer) {
+    observer.reserve_transit(this, SHMT_WRITE, SHMT_READ);
+    sock->shutdown_write();
+    phase = CONNECTION_SHUTTING_DOWN;
+}
 
 void    Connection::die(IObserver& observer) {
-    observer.reserve_clear(this, SHMT_WRITE);
+    switch (phase) {
+        case CONNECTION_RESPONDING:
+        case CONNECTION_ERROR_RESPONDING: {
+            observer.reserve_clear(this, SHMT_WRITE);
+            break;
+        }
+        default: {
+            observer.reserve_clear(this, SHMT_READ);
+            break;
+        }
+    }
     sock->shutdown();
     dying = true;
 }

@@ -34,7 +34,9 @@ EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_socket_operation t) {
 void    EventKqueueLoop::loop() {
     while (1) {
         update();
+
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
+
         if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (int i = 0; i < count; i++) {

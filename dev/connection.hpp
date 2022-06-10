@@ -16,7 +16,10 @@ enum t_connection_phase {
     // 送信モード(通常応答)
     CONNECTION_RESPONDING,
     // 送信モード(エラー応答)
-    CONNECTION_ERROR_RESPONDING
+    CONNECTION_ERROR_RESPONDING,
+    // Gracefulに接続を切っていくモード
+    CONNECTION_SHUTTING_DOWN,
+    CONNECTION_DUMMY
 };
 
 // [コネクションクラス]
@@ -56,7 +59,10 @@ private:
     // 送信状態に移る
     void    ready_sending(IObserver& observer);
 
-    // 接続を閉じる準備をする
+    // gracefulに接続を閉じるモードに移行する
+    void    ready_shutting_down(IObserver& observer);
+
+    // 次のupdateで接続を完全に閉じる
     void    die(IObserver& observer);
 
 public:

@@ -9,7 +9,7 @@ template <class T>
 class LightString {
 public:
     typedef T                                       element;
-    typedef std ::basic_string<T>                   string_class;
+    typedef std::basic_string<T>                    string_class;
     typedef typename string_class::iterator         iterator;
     typedef typename string_class::const_iterator   const_iterator;
     typedef typename string_class::size_type        size_type;

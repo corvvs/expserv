@@ -82,3 +82,11 @@ ssize_t SocketConnected::receive(void *buffer, size_t len, int flags) {
 int SocketConnected::shutdown() {
     return ::shutdown(get_fd(), SHUT_RDWR);
 }
+
+int SocketConnected::shutdown_write() {
+    return ::shutdown(get_fd(), SHUT_WR);
+}
+
+int SocketConnected::shutdown_read() {
+    return ::shutdown(get_fd(), SHUT_RD);
+}
