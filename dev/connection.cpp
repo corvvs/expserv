@@ -4,6 +4,12 @@
 int started = 0;
 int finished = 0;
 
+void    ConnectionAttribute::initialize(ConnectionAttribute& attr) {
+    attr.http_version = HTTP::DEFAULT_HTTP_VERSION;
+    attr.is_persistent = true;
+    attr.timeout = 60 * 1000;
+}
+
 Connection::Connection() {
     throw std::runtime_error("forbidden");
 }
@@ -18,9 +24,9 @@ Connection::Connection(
     sock(sock_given),
     current_req(NULL),
     current_res(NULL),
-    latest_operated_at(0),
-    connection_timeout(60 * 1000)
+    latest_operated_at(0)
 {
+    ConnectionAttribute::initialize(attr);
     started_ = started++;
     DSOUT() << "started_: " << started_ << std::endl;
     touch();
@@ -147,7 +153,7 @@ default: {
 
 void    Connection::timeout(IObserver& observer, t_time_epoch_ms epoch) {
     if (dying) { return; }
-    if (epoch < connection_timeout + latest_operated_at) { return; }
+    if (epoch < attr.timeout + latest_operated_at) { return; }
     // タイムアウト処理
     DSOUT() << "timeout!!: " << get_fd() << std::endl;
     die(observer);

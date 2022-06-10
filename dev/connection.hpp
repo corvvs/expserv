@@ -22,6 +22,16 @@ enum t_connection_phase {
     CONNECTION_DUMMY
 };
 
+// 準静的なコネクションの性質
+// "準静的" = リクエストの内容次第で変更されうるが, それ以外(=時間変化など)によっては変わらない
+struct ConnectionAttribute {
+    HTTP::t_version http_version;
+    bool            is_persistent;
+    t_time_epoch_ms timeout;
+
+    static void initialize(ConnectionAttribute& attr);
+};
+
 // [コネクションクラス]
 // [責務]
 // - 通信可能ソケット1つを保持すること; ISocketLike
@@ -32,6 +42,8 @@ enum t_connection_phase {
 class Connection: public ISocketLike {
 private:
     IRouter*            router_;
+    ConnectionAttribute attr;
+
     t_connection_phase  phase;
     bool                dying;
 
@@ -41,8 +53,6 @@ private:
     ResponseHTTP*       current_res;
     // 最終操作時刻
     t_time_epoch_ms     latest_operated_at;
-    // タイムアウト; 設定で変えるようになるはず?
-    t_time_epoch_ms     connection_timeout;
 
     int                 started_;
 
