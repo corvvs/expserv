@@ -65,12 +65,9 @@ namespace CFG {
             static Element  def_charset(Grammar& grammar, element_id_type id, unsigned char first, unsigned char last, size_type ge = 1, size_type le = 1) {
                 Element el(grammar, id, ge, le, REPETITION, false);
                 memset(el.charset, 0, sizeof(bool) * 256);
-                DSOUT();
                 for (; first <= last; ++first) {
                     el.charset[first] = true;
-                    std::cout << first;
                 }
-                std::cout << std::endl;
                 return el;
             }
 
@@ -117,6 +114,16 @@ namespace CFG {
 
             Element&    append(Element el) {
                 this->actual()->subsidiary.push_back(el);
+                return *this;
+            }
+
+            Element&    append(element_id_type eid) {
+                element_map_type::iterator it = grammar.element_map.find(eid);
+                if (it == grammar.element_map.end()) {
+                    DSOUT() << "!!" << eid << std::endl;
+                    throw std::runtime_error("no element for a given id");
+                }
+                this->actual()->subsidiary.push_back(it->second);
                 return *this;
             }
 
@@ -179,7 +186,7 @@ namespace CFG {
 
             Matcher(Element* from):
                 elem(from), phase_(NOT_STARTED) {
-                    DSOUT() << from->id << std::endl;
+                    // DSOUT() << from->id << std::endl;
                 }
 
             Matcher&    operator=(const Matcher& rhs) {
@@ -208,13 +215,6 @@ namespace CFG {
                         }
                         for (; j < target.length() && count < actual->le; ) {
                             // DSOUT() << actual << ":" << actual->id << " j = " << j << ", '" << target[j] << "' " << actual->charset[(unsigned char)(target[j])] << std::endl;
-                            DSOUT() << "[";
-                            for(unsigned int c = 0; c < 256; ++c) {
-                                if (actual->charset[c]) {
-                                    std::cout << (unsigned char)c;
-                                }
-                            }
-                            std::cout << "], '" << target[j] << "'" << std::endl;
                             if (!actual->charset[(unsigned char)(target[j])]) { break; }
                             ++count;
                             if (actual->ge <= count && count <= actual->le) {
@@ -227,17 +227,17 @@ namespace CFG {
                         } else {
                             phase_ = NTH_RESULT;
                         }
-                        DSOUT() << elem->id << " tos: " << tos.size() << ", phase = " << phase_ << std::endl;
+                        // DSOUT() << elem->id << " tos: " << tos.size() << ", phase = " << phase_ << std::endl;
                     }
                     switch (phase_) {
                         case NTH_RESULT: {
-                            DSOUT() << elem->id << ": matched." << std::endl;
+                            // DSOUT() << elem->id << ": matched." << std::endl;
                             size_type j = tos.back();
                             tos.pop_back();
                             return Result(target, actual, from, j);
                         }
                         case FINISHED:
-                            DSOUT() << elem->id << ": unmatch!" << std::endl;
+                            // DSOUT() << elem->id << ": unmatch!" << std::endl;
                             break;
                         default:
                             throw std::runtime_error("unexpected state");
@@ -245,7 +245,7 @@ namespace CFG {
 
                 } else if (actual->is_repetition()) {
 
-                    DSOUT() << "is_repetition subs: " << actual->subsidiary.size() << ", phase: " << phase_ << std::endl;
+                    // DSOUT() << "is_repetition subs: " << actual->subsidiary.size() << ", phase: " << phase_ << std::endl;
                     if (phase_ == NOT_STARTED) {
                         if (actual->subsidiary.empty()) {
                             phase_ = FINISHED;
@@ -258,14 +258,14 @@ namespace CFG {
                     switch (phase_) {
                         case NTH_RESULT: {
                             for (;true;) {
-                                DSOUT() << elem->id << " phase: " << phase_ << " matchers: " << matchers.size() << std::endl;
+                                // DSOUT() << elem->id << " phase: " << phase_ << " matchers: " << matchers.size() << std::endl;
                                 size_type f = results.empty() ? from : results.back().to_;
-                                DSOUT() << elem->id << " el_index: " << el_index << " matchers.size() = " << matchers.size() << std::endl;
+                                // DSOUT() << elem->id << " el_index: " << el_index << " matchers.size() = " << matchers.size() << std::endl;
                                 Result r = matchers.back().match(target, f);
                                 if (r.is_unmatch()) {
-                                    DSOUT() << elem->id << ": unmatch!" << std::endl;
+                                    // DSOUT() << elem->id << ": unmatch!" << std::endl;
                                     matchers.pop_back();
-                                    DSOUT() << "pop_back: " << el_index << std::endl;
+                                    // DSOUT() << "pop_back: " << el_index << std::endl;
                                     if (el_index == 0) {
                                         results.clear();
                                         if (elem->ge <= el_index && el_index <= elem->le) {
@@ -284,10 +284,10 @@ namespace CFG {
                                         }
                                     }
                                 } else {
-                                    DSOUT() << elem->id << ": matched." << std::endl;
+                                    // DSOUT() << elem->id << ": matched." << std::endl;
                                     ++el_index;
                                     matchers.push_back(Matcher(actual->subsidiary.front().actual()));
-                                    DSOUT() << "push_back" << std::endl;
+                                    // DSOUT() << "push_back" << std::endl;
                                     results.push_back(r);
                                 }
                             }
@@ -300,7 +300,7 @@ namespace CFG {
 
                 } else if (actual->is_selection()) {
 
-                    DSOUT() << "is_selection" << std::endl;
+                    // DSOUT() << "is_selection" << std::endl;
                     if (phase_ == NOT_STARTED) {
                         if (actual->subsidiary.empty()) {
                             phase_ = FINISHED;
@@ -310,16 +310,13 @@ namespace CFG {
                             matchers.push_back(Matcher(actual->subsidiary[0].actual()));
                         }
                     }
-                    DSOUT() << actual->id << " el_index: " << el_index << ", subsidiary: " << actual->subsidiary.size() << std::endl;
+                    // DSOUT() << actual->id << " el_index: " << el_index << ", subsidiary: " << actual->subsidiary.size() << std::endl;
                     switch (phase_) {
                         case NTH_RESULT: {
-                            for (int i = 0; i <actual->subsidiary.size(); ++i) {
-                                DSOUT() << i << ": " << actual->subsidiary[i].actual()->id << std::endl;
-                            }
                             for (; el_index < actual->subsidiary.size() ;) {
-                                DSOUT() << "TRY " << matchers[0].elem->id << " " << el_index << std::endl;
+                                // DSOUT() << "TRY " << matchers[0].elem->id << " " << el_index << std::endl;
                                 Result r = matchers[0].match(target, from);
-                                DSOUT() << matchers[0].elem->id << " " << el_index << ": unmatch? " << r.is_unmatch() << std::endl;
+                                // DSOUT() << matchers[0].elem->id << " " << el_index << ": unmatch? " << r.is_unmatch() << std::endl;
                                 if (!r.is_unmatch()) { return r; }
                                 ++el_index;
                                 if (el_index >= actual->subsidiary.size()) { break; }
@@ -335,7 +332,7 @@ namespace CFG {
 
                 } else if (actual->is_concat()) {
 
-                    DSOUT() << "is_concat" << std::endl;
+                    // DSOUT() << "is_concat" << std::endl;
                     if (phase_ == NOT_STARTED) {
                         if (actual->subsidiary.empty()) {
                             phase_ = FINISHED;
@@ -387,7 +384,7 @@ namespace CFG {
             }
 
             void    shift_phase(const Result& result) {
-                DSOUT() << elem->id << ": " << phase_ << ": " << result.is_unmatch() << std::endl;
+                // DSOUT() << elem->id << ": " << phase_ << ": " << result.is_unmatch() << std::endl;
                 if (elem->is_terminal()) {
                     if (phase_ == NTH_RESULT && tos.empty()) {
                         phase_ = FINISHED;
@@ -408,9 +405,7 @@ namespace CFG {
             }
 
             Result  match(const string_type& target, size_type from) {
-                DSOUT() << "start match_phase: " << elem->id << std::endl;
                 Result r = match_phase(target, from);
-                DSOUT() << "end match_phase: " << elem->id << std::endl;
                 shift_phase(r);
                 return r;
             }
@@ -448,6 +443,13 @@ namespace CFG {
             return el;
         }
 
+        Element def_repetition(element_id_type id, element_id_type eid, size_type ge = 1, size_type le = -1) {
+            Element el = Element::def_repetition(*this, id, ge, le);
+            this->register_element(el);
+            el.append(eid);
+            return el;
+        }
+
         void    register_element(Element el) {
             if (el.is_surrogate) {
                 throw std::runtime_error("cannot register a surrogate element directly");
@@ -457,16 +459,12 @@ namespace CFG {
         }
 
         Result  match(element_id_type entry, const string_type& target) {
-            DSOUT() << "finding by " << entry << std::endl;
             element_map_type::iterator it = element_map.find(entry);
             if (it == element_map.end()) {
                 throw std::runtime_error("no element for a key");
             }
-            DSOUT() << &(it->second) << std::endl;
-            DSOUT() << it->second.id << std::endl;
             for (size_type i = 0; i < target.length(); ++i) {
                 Matcher head(&(it->second));
-                DSOUT() << "i = " << i << std::endl;
                 Result r = head.match(target, i);
                 if (!r.is_unmatch()) {
                     return r;
@@ -480,40 +478,36 @@ namespace CFG {
 int main(int argc, char **argv) {
     const std::string target = argc <= 1 ? "123" : argv[1];
     CFG::Grammar g;
-    CFG::Grammar::Element   alpha_lower = g.def_charset("alpha_lower", 'a', 'z');
-    CFG::Grammar::Element   alpha_upper = g.def_charset("alpha_upper", 'A', 'Z');
-    CFG::Grammar::Element   unsco = g.def_charset("unsco", "_");
-    CFG::Grammar::Element   word_head = g.def_selection("alpha")
-        .append(alpha_lower)
-        .append(alpha_upper)
-        .append(unsco);
-    CFG::Grammar::Element   digit = g.def_charset("digit", '0', '9');
-    CFG::Grammar::Element   word_body = g.def_selection("word_body")
-        .append(word_head)
-        .append(digit);
-    CFG::Grammar::Element   word_bodies = g.def_repetition("word_bodies", word_body, 0, -1);
-    CFG::Grammar::Element   word = g.def_concat("word")
-        .append(word_head)
-        .append(word_bodies);
-    // CFG::Grammar::Element   sp = g.def_charset("sp", " \t", 0, -1);
-    CFG::Grammar::Element   sp = g.def_charset("sp", " \t");
-    CFG::Grammar::Element   sps = g.def_repetition("sps", sp, 0, -1);
-    CFG::Grammar::Element   comma = g.def_charset("comma", ",");
-    CFG::Grammar::Element   separator = g.def_concat("separator")
-        .append(sps)
-        .append(comma)
-        .append(sps);
-    CFG::Grammar::Element   word_after_head = g.def_concat("word_after_head")
-        .append(separator)
-        .append(g.def_repetition("word?", word, 0, 1));
-    CFG::Grammar::Element   words_after_head = g.def_repetition("words_after_head", word_after_head, 0, -1);
-    CFG::Grammar::Element   list_of_words = g.def_concat("list_of_words")
-        .append(word)
-        .append(words_after_head);
+    g.def_charset("alpha_lower", 'a', 'z');
+    g.def_charset("alpha_upper", 'A', 'Z');
+    g.def_charset("_", "_");
+    g.def_selection("word_head")
+        .append("alpha_lower")
+        .append("alpha_upper")
+        .append("_");
+    g.def_charset("digit", '0', '9');
+    g.def_selection("word_body")
+        .append("word_head")
+        .append("digit");
+    g.def_repetition("word_bodies", "word_body", 0);
+    g.def_concat("word")
+        .append("word_head")
+        .append("word_bodies");
+    g.def_charset("sp", " \t");
+    g.def_repetition("sps", "sp", 0);
+    g.def_charset("comma", ",");
+    g.def_concat("separator")
+        .append("sps")
+        .append("comma")
+        .append("sps");
+    g.def_concat("word_after_head")
+        .append("separator")
+        .append(g.def_repetition("word?", "word", 0, 1));
+    g.def_repetition("words_after_head", "word_after_head", 0);
+    g.def_concat("list_of_words")
+        .append("word")
+        .append("words_after_head");
 
-
-    // CFG::Grammar::Element   alphanumerics =
-    //     CFG::Grammar::Element::def_repetition(g, "alphanumerics", &alphanumeric, 0, -1);
     CFG::Grammar::Result r = g.match("list_of_words", target);
 
     DSOUT() << "\"" << target << "\"" << " -> " << "\"" << r.str() << "\"" << std::endl;
