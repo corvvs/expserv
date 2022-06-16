@@ -36,8 +36,9 @@ void    EventKqueueLoop::loop() {
         update();
 
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
-
-        if (count == 0) {
+        if (count < 0) {
+            throw std::runtime_error("kevent error");
+        } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (int i = 0; i < count; i++) {
                 int fd = evlist[i].ident;

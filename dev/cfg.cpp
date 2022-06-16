@@ -544,7 +544,7 @@ int main(int argc, char **argv) {
             .append("alpha").append("Alpha");
         g.def_charset("DIGIT", '0', '9');
         g.def_selection("ALPHA/DIGIT/+/-/.")
-                    .append("ALPHA").append("DIGIT").append(g.def_charset("+/-/.", "+-."));
+            .append("ALPHA").append("DIGIT").append(g.def_charset("+/-/.", "+-."));
         g.def_repetition("*(ALPHA/DIGIT/+/-/.)" , "ALPHA/DIGIT/+/-/.", 0, -1);
         g.def_concat("scheme")
             .append("ALPHA")

@@ -5,7 +5,7 @@ std::ostream&   debug_out(
     const int linenumber,
     const char *func
 ) {
-    return (std::cout << "[" << filename << ":" << linenumber << ":" << func << "] ");
+    return (std::cout << "[" << filename << ":" << linenumber << " " << func << "] ");
 }
 
 std::ostream&   debug_err(
@@ -13,5 +13,5 @@ std::ostream&   debug_err(
     const int linenumber,
     const char *func
 ) {
-    return (std::cerr << "[" << filename << ":" << linenumber << ":" << func << "] ");
+    return (std::cerr << "[" << filename << ":" << linenumber << " " << func << "] ");
 }

@@ -8,4 +8,4 @@ RUN apt-get install -y nginx
 RUN mkdir -p /home/dev
 RUN echo hello > hello
 
-CMD tail -f hello
+CMD nginx	-g "daemon off;"

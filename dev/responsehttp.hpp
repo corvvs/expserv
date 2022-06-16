@@ -49,7 +49,9 @@ public:
     // ボディを追加する
     void    feed_body(const byte_string& str);
     // ボディを追加する
-    void    feed_body(byte_string::const_iterator first, byte_string::const_iterator last);
+    void    feed_body(
+        byte_string::const_iterator first,
+        byte_string::const_iterator last);
 
     // 保持している情報をもとにHTTPメッセージのテキストデータを生成し, 
     // message_text に入れる.

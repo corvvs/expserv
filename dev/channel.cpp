@@ -14,7 +14,7 @@ Channel::Channel(
     sock(SocketListening::bind(sdomain, stype, port)),
     router_(router)
 {
-    sock->listen(128);
+    sock->listen(1024);
 }
 
 Channel::~Channel() {
