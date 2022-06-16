@@ -4,10 +4,10 @@
 int started = 0;
 int finished = 0;
 
-void    ConnectionAttribute::initialize(ConnectionAttribute& attr) {
-    attr.http_version = HTTP::DEFAULT_HTTP_VERSION;
-    attr.is_persistent = true;
-    attr.timeout = 60 * 1000;
+ConnectionAttribute::ConnectionAttribute() {
+    http_version = HTTP::DEFAULT_HTTP_VERSION;
+    is_persistent = true;
+    timeout = 60 * 1000;
 }
 
 Connection::Connection() {
@@ -19,6 +19,7 @@ Connection::Connection(
     SocketConnected* sock_given
 ):
     router_(router),
+    attr(ConnectionAttribute()),
     phase(CONNECTION_RECEIVING),
     dying(false),
     sock(sock_given),
@@ -26,7 +27,6 @@ Connection::Connection(
     current_res(NULL),
     latest_operated_at(0)
 {
-    ConnectionAttribute::initialize(attr);
     started_ = started++;
     DSOUT() << "started_: " << started_ << std::endl;
     touch();

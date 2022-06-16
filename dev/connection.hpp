@@ -29,7 +29,7 @@ struct ConnectionAttribute {
     bool            is_persistent;
     t_time_epoch_ms timeout;
 
-    static void initialize(ConnectionAttribute& attr);
+    ConnectionAttribute();
 };
 
 // [コネクションクラス]
