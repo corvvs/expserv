@@ -9,7 +9,14 @@
 
 namespace ParserHelper {
     typedef HTTP::byte_string               byte_string;
-    typedef std::pair<ssize_t, ssize_t>     index_range;
+    // typedef std::pair<ssize_t, ssize_t>     index_range;
+
+    struct index_range: public std::pair<ssize_t, ssize_t> {
+        index_range(ssize_t f, ssize_t t);
+        static index_range  invalid();
+        bool                is_invalid() const;
+        ssize_t             length() const;
+    };
 
     const byte_string SP = " ";
     const byte_string OWS = " \t";
@@ -19,8 +26,11 @@ namespace ParserHelper {
 
     // LF, または CRLF を見つける.
     // 見つかった場合, LFまたはCRLFの [開始位置, 終了位置の次) のペアを返す.
-    // 見つからない場合, [len, len) を返す.
+    // 見つからない場合, [len+1,len] を返す.
     index_range find_crlf(const byte_string& str, ssize_t from, ssize_t len);
+
+    // ヘッダー値用のfind_crlf; obs-fold をスルーする
+    index_range find_crlf_header_value(const byte_string& str, ssize_t from, ssize_t len);
 
     // 空白行、すなわち「LFまたはCRLF」が2つ連続している部分を見つける.
     index_range find_blank_line(const byte_string& str, ssize_t from, ssize_t len);
@@ -50,5 +60,7 @@ namespace ParserHelper {
     unsigned int    stou(const byte_string& str);
     byte_string     utos(unsigned int u);
 }
+
+std::ostream&   operator<<(std::ostream& out, const ParserHelper::index_range& r);
 
 #endif

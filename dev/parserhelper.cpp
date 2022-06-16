@@ -1,16 +1,57 @@
 #include "parserhelper.hpp"
 
+ParserHelper::index_range::index_range(ssize_t f, ssize_t t):
+    pair(f, t) {}
+
+ParserHelper::index_range  ParserHelper::index_range::invalid() {
+    return index_range(0, -1);
+}
+
+bool    ParserHelper::index_range::is_invalid() const {
+    return first > second;
+}
+
+ssize_t ParserHelper::index_range::length() const {
+    return second - first;
+}
+
 ParserHelper::index_range ParserHelper::find_crlf(const byte_string& str, ssize_t from, ssize_t len) {
     for (ssize_t i = from; i - from < len; i++) {
+        // iは絶対インデックス; strの先頭からの位置
+        ssize_t ri = i - from;
+        // riは相対インデックス; fromからの位置
         // DSOUT() << from << ", " << i << ", " << len << ": " << str[i] << "-" << int(str[i]) << std::endl;
         if (str[i] == '\n') {
             if (0 < i && str[i - 1] == '\r') {
-                return index_range(i - 1 - from, i + 1 - from);
+                return index_range(ri - 1, ri + 1);
             }
-            return index_range(i - from, i + 1 - from);
+            return index_range(ri, ri + 1);
         }
     }
-    return index_range(len, len);
+    return index_range(len+1,len);
+}
+
+ParserHelper::index_range ParserHelper::find_crlf_header_value(const byte_string& str, ssize_t from, ssize_t len) {
+    DSOUT() << "target: \"" << byte_string(str.begin() + from, str.begin() + from + len) << "\"" << std::endl;
+    ssize_t movement = 0;
+    while (true) {
+        ssize_t rfrom = from + movement;
+        ssize_t rlen = len - movement;
+        DSOUT() << "finding from: " << rfrom << ", len: " << rlen << std::endl;
+        index_range ir = find_crlf(str, rfrom, rlen);
+        if (!ir.is_invalid()) {
+            // is obs-fold ?
+            DSOUT() << "is obs-fold?? " << ir << std::endl;
+            if (ir.second < len && is_sp(str[from + ir.second])) {
+                DSOUT() << "is obs-fold!!" << std::endl;
+                movement += ir.second;
+                continue;
+            }
+            return index_range(ir.first + movement, ir.second + movement);
+        }
+        break;
+    }
+    return index_range(len + 1 + movement,len + movement);
 }
 
 ParserHelper::index_range ParserHelper::find_blank_line(const byte_string& str, ssize_t from, ssize_t len) {
@@ -19,7 +60,7 @@ ParserHelper::index_range ParserHelper::find_blank_line(const byte_string& str, 
         // DOUT() << "i: " << i << std::endl;
         index_range nl = find_crlf(str, from + i, len - i);
         // DOUT() << "nl: [" << nl.first << "," << nl.second << ")" << std::endl;
-        if (nl.first >= nl.second) {
+        if (nl.is_invalid()) {
             break;
         }
         i += nl.second;
@@ -30,7 +71,7 @@ ParserHelper::index_range ParserHelper::find_blank_line(const byte_string& str, 
             return index_range(i - (nl.second - nl.first), i + 1);
         }
     }
-    return index_range(len, len);
+    return index_range(len+1,len);
 }
 
 ssize_t      ParserHelper::ignore_crlf(const byte_string& str, ssize_t from, ssize_t len) {
@@ -51,7 +92,7 @@ ssize_t      ParserHelper::ignore_crlf(const byte_string& str, ssize_t from, ssi
 }
 
 bool        ParserHelper::is_sp(char c) {
-    return c == ' ';
+    return SP.find(c) != std::string::npos;
 }
 
 ssize_t      ParserHelper::ignore_sp(const byte_string& str, ssize_t from, ssize_t len) {
@@ -130,4 +171,8 @@ ParserHelper::byte_string   ParserHelper::utos(unsigned int u) {
     std::stringstream   ss;
     ss << u;
     return ss.str();
+}
+
+std::ostream&   operator<<(std::ostream& out, const ParserHelper::index_range& r) {
+    return out << "[" << r.first << "," << r.second << ")";
 }

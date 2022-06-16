@@ -66,19 +66,25 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
         case PARSE_REQUEST_HEADER: {
 
             // ヘッダを解析する
-            ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
-            
+            // ヘッダ行の終わりを探索
+            ParserHelper::index_range res = ParserHelper::find_crlf_header_value(bytebuffer, mid, len);
             mid += res.second;
-            if (res.first >= res.second) {
+            DSOUT() << res << std::endl;
+            if (res.is_invalid()) {
                 return ;
             }
+            DSOUT() << "detected end of a header" << std::endl;
             // CRLFが見つかった
             // -> [mid, res.first) が1つのヘッダ
+            DSOUT() << "bytebuffer:" << std::endl << bytebuffer << std::endl;
+            DSOUT() << "start_of_current_header: " << start_of_current_header << std::endl;
+            DSOUT() << "mid: " << mid << std::endl;
             // DSOUT() << "[" << start_of_current_header << "," << mid - (res.second - res.first) << ")" << std::endl;
             light_string header_line(
                 bytebuffer,
                 start_of_current_header,
-                mid - (res.second - res.first));
+                mid - res.length());
+            DSOUT() << "header:" << std::endl << header_line.str() << std::endl;
             if (header_line.length() > 0) {
                 // header_line が空文字列でない
                 // -> ヘッダとしてパースを試みる
@@ -146,7 +152,7 @@ bool    RequestHTTP::seek_reqline_end(size_t len) {
     // DSOUT() << "* determining end_of_reqline... *" << std::endl;
     ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
     mid += res.second;
-    if (res.first >= res.second) { return false; }
+    if (res.is_invalid()) { return false; }
     // CRLFが見つかった
     end_of_reqline = mid - (res.second - res.first);
     start_of_header = mid;
@@ -247,33 +253,44 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
 }
 
 void    RequestHTTP::extract_control_headers() {
-    // - host
-    header_host = header_dict["host"].str();
-    if (header_host.length() == 0) {
-        // host が空
-        // 1.1ならbad request
-        throw http_error("no host", HTTP::STATUS_BAD_REQUEST);
-    }
-    // DSOUT() << "host is: " << header_host << std::endl;
-    // - content-length
-    // bodyを持たないメソッドの場合は0
-    // そうでない場合, content-length の値を変換する
-    switch (http_method) {
-        case HTTP::METHOD_GET:
-        case HTTP::METHOD_DELETE: {
-            content_length = 0;
-            break;
+    // [Host]
+    {
+        header_host = header_dict["host"].str();
+        if (header_host.length() == 0) {
+            // host が空
+            // 1.1ならbad request
+            throw http_error("no host", HTTP::STATUS_BAD_REQUEST);
         }
-        default: {
-            byte_string cl = header_dict["content-length"].str();
-            if (cl == "") {
-                content_length = -1;
-            } else {
-                content_length = ParserHelper::stou(cl);
+        // DSOUT() << "host is: " << header_host << std::endl;
+    }
+
+    // [Content-Length]
+    {
+        // bodyを持たないメソッドの場合は0
+        // そうでない場合, content-length の値を変換する
+        switch (http_method) {
+            case HTTP::METHOD_GET:
+            case HTTP::METHOD_DELETE: {
+                content_length = 0;
+                break;
+            }
+            default: {
+                byte_string cl = header_dict["content-length"].str();
+                if (cl == "") {
+                    content_length = -1;
+                } else {
+                    content_length = ParserHelper::stou(cl);
+                }
             }
         }
+        // DSOUT() << "content-length is: " << content_length << std::endl;
     }
-    // DSOUT() << "content-length is: " << content_length << std::endl;
+
+    // [Transfer-Encoding]
+    {
+        byte_string te = header_dict["transfer-encoding"].str();
+        
+    }
 }
 
 bool    RequestHTTP::is_ready_to_navigate() const {
