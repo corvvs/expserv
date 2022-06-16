@@ -156,6 +156,10 @@ namespace CFG {
                 return from_ > to_;
             }
 
+            bool    is_zerowidth() const {
+                return !is_unmatch() && from_ == to_;
+            }
+
             Result(const string_type& target, Element* elem, size_type from, size_type to):
                 target(target), elem(elem), from_(from), to_(to) {}
 
@@ -179,6 +183,18 @@ namespace CFG {
                 if (is_unmatch()) { return "*unmatched*"; }
                 return string_type(target.begin() + from_, target.begin() + to_);
             }
+
+            friend std::ostream& operator<<(std::ostream& out, CFG::Grammar::Result result) {
+                return out
+                    << "{" << result.elem->id << ":[" << result.from_ << "," << result.to_ << ")-" << result.inners.size()
+                    << "} \""
+                    << (result.from_ <= result.to_
+                        ? std::string(result.target.begin() + result.from_, result.target.begin() + result.to_)
+                        : "*unmatched*"
+                    )
+                    << "\"";
+            }
+
         };
 
         class Matcher {
@@ -214,20 +230,15 @@ namespace CFG {
 
             Result  match_phase(const string_type& target, size_type from, size_type depth) {
                 Element* actual = elem->actual();
-                // DSOUT() << actual->id << ": " << elem << " -> " << actual << std::endl;
-                // DSOUT() << actual->id << " " << actual->is_terminal() << actual->is_repetition() << actual->is_selection() << actual->is_concat() << std::endl;
                 if (actual->is_terminal()) {
 
-                    // DSOUT() << "is_terminal, " << phase_ << std::endl;
                     if (phase_ == NOT_STARTED) {
                         size_type   j = from;
                         size_type count = 0;
-                        // DSOUT() << actual->ge << " <= " << count << " <= " << actual->le << std::endl;
                         if (actual->ge <= count && count <= actual->le) {
                             tos.push_back(j);
                         }
                         for (; j < target.length() && count < actual->le; ) {
-                            // DSOUT() << actual << ":" << actual->id << " j = " << j << ", '" << target[j] << "' " << actual->charset[(unsigned char)(target[j])] << std::endl;
                             if (!actual->charset[(unsigned char)(target[j])]) { break; }
                             ++count;
                             if (actual->ge <= count && count <= actual->le) {
@@ -240,17 +251,14 @@ namespace CFG {
                         } else {
                             phase_ = NTH_RESULT;
                         }
-                        // DSOUT() << elem->id << " tos: " << tos.size() << ", phase = " << phase_ << std::endl;
                     }
                     switch (phase_) {
                         case NTH_RESULT: {
-                            // DSOUT() << elem->id << ": matched." << std::endl;
                             size_type j = tos.back();
                             tos.pop_back();
                             return Result(target, actual, from, j);
                         }
                         case FINISHED:
-                            // DSOUT() << elem->id << ": unmatch!" << std::endl;
                             break;
                         default:
                             throw std::runtime_error("unexpected state");
@@ -258,7 +266,6 @@ namespace CFG {
 
                 } else if (actual->is_repetition()) {
 
-                    // DSOUT() << "is_repetition subs: " << actual->subsidiaries.size() << ", phase: " << phase_ << std::endl;
                     if (phase_ == NOT_STARTED) {
                         if (actual->subsidiaries.empty()) {
                             phase_ = FINISHED;
@@ -270,38 +277,54 @@ namespace CFG {
                     }
                     switch (phase_) {
                         case NTH_RESULT: {
+                            // 下限
+                            DSOUT() << std::string(depth*2, ' ') << "[" << actual->ge << ", " << actual->le << "], matchers: " << matchers.size() << std::endl;
                             for (;true;) {
-                                // DSOUT() << elem->id << " phase: " << phase_ << " matchers: " << matchers.size() << std::endl;
                                 size_type f = results.empty() ? from : results.back().to_;
-                                // DSOUT() << elem->id << " el_index: " << el_index << " matchers.size() = " << matchers.size() << std::endl;
                                 Result r = matchers.back().match(target, f, depth + 1);
-                                if (r.is_unmatch()) {
-                                    // DSOUT() << elem->id << ": unmatch!" << std::endl;
+                                DSOUT() << std::string(depth*2, ' ') << actual->id << ": returned: " << r << std::endl;
+                                // [反復におけるゼロ幅リザルトについて]
+                                // - ゼロ幅リザルトの位置は問題にならない
+                                //   -> 最初に集中していてもいい
+                                // - ゼロ幅リザルトは下限(ge)より多くある意味がない
+                                // ↓
+                                // - ge + 1個目のリザルトがゼロ幅であることを許容しない
+                                // - リザルトが2個目以降かつ前のリザルトがゼロ幅でなく、自身がゼロ幅であることを許容しない
+
+                                // r は el_index + 1 個目のリザルト
+                                bool is_re_zero = r.is_zerowidth() && !r.is_unmatch() && !results.empty() && !results.back().is_zerowidth();
+                                bool is_too_much_zero = r.is_zerowidth() && elem->ge < el_index;
+                                DSOUT() << std::string(depth*2, ' ') << actual->id << ":results++" << std::endl;
+                                results.push_back(r);
+                                DSOUT() << std::string(depth*2, ' ') << r.is_unmatch() << is_re_zero << is_too_much_zero << std::endl;
+                                if (r.is_unmatch() || is_re_zero || is_too_much_zero) {
+                                    // マッチしなかった
                                     matchers.pop_back();
-                                    // DSOUT() << "pop_back: " << el_index << std::endl;
+                                    DSOUT() << std::string(depth*2, ' ') << actual->id << ":results--" << std::endl;
+                                    results.pop_back();
                                     if (el_index == 0) {
                                         results.clear();
                                         if (elem->ge <= el_index && el_index <= elem->le) {
-                                            return Result(target, actual->front_actual(), from, from);
+                                            // 中身が空のゼロ幅リザルトを返す
+                                            DSOUT() << std::string(depth*2, ' ') << "(T_T)" << std::endl;
+                                            return Result(target, actual, from, from);
                                         }
-                                        return Result::unmatch(target, actual->front_actual());
+                                        return Result::unmatch(target, actual);
                                     } else {
-                                        --el_index;
-                                        if (el_index + 1 < results.size()) {
-                                            results.pop_back();
-                                        }
                                         if (elem->ge <= el_index && el_index <= elem->le) {
-                                            Result r(target, actual->front_actual(), from, results.back().to_);
+                                            Result r(target, actual, from, results.back().to_);
+                                            DSOUT() << std::string(depth*2, ' ') << "results.back(): " << results.back() << std::endl;
+                                            DSOUT() << std::string(depth*2, ' ') << "r:" << r.elem->id << " [" << r.from_ << "," << r.to_ << "), size=" << results.size() << std::endl;
                                             r.inners = results;
                                             return r;
                                         }
                                     }
                                 } else {
-                                    // DSOUT() << elem->id << ": matched." << std::endl;
+                                    // マッチした
                                     ++el_index;
                                     matchers.push_back(Matcher(actual->front_actual()));
-                                    // DSOUT() << "push_back" << std::endl;
-                                    results.push_back(r);
+                                    DSOUT() << std::string(depth*2, ' ') << elem->id << ":" << depth << ":" << results.size() << ": [" << results.back().from_ << "," << results.back().to_ << ")" << std::endl;
+                                    // この時点で el_index はリザルトの個数になる
                                 }
                             }
                         }
@@ -313,7 +336,6 @@ namespace CFG {
 
                 } else if (actual->is_selection()) {
 
-                    // DSOUT() << "is_selection" << std::endl;
                     if (phase_ == NOT_STARTED) {
                         if (actual->subsidiaries.empty()) {
                             phase_ = FINISHED;
@@ -323,13 +345,10 @@ namespace CFG {
                             matchers.push_back(Matcher(actual->front_actual()));
                         }
                     }
-                    // DSOUT() << actual->id << " el_index: " << el_index << ", subsidiaries: " << actual->subsidiaries.size() << std::endl;
                     switch (phase_) {
                         case NTH_RESULT: {
                             for (; el_index < actual->subsidiaries.size() ;) {
-                                // DSOUT() << "TRY " << matchers[0].elem->id << " " << el_index << std::endl;
                                 Result r = matchers[0].match(target, from, depth + 1);
-                                // DSOUT() << matchers[0].elem->id << " " << el_index << ": unmatch? " << r.is_unmatch() << std::endl;
                                 if (!r.is_unmatch()) { return r; }
                                 ++el_index;
                                 if (el_index >= actual->subsidiaries.size()) { break; }
@@ -345,13 +364,13 @@ namespace CFG {
 
                 } else if (actual->is_concat()) {
 
-                    // DSOUT() << "is_concat" << std::endl;
                     if (phase_ == NOT_STARTED) {
                         if (actual->subsidiaries.empty()) {
                             phase_ = FINISHED;
                         } else {
                             phase_ = NTH_RESULT;
                             el_index = 0;
+                            DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers++" << std::endl;
                             matchers.push_back(Matcher(actual->nth_actual(el_index)));
                         }
                     }
@@ -359,19 +378,20 @@ namespace CFG {
                         case NTH_RESULT: {
                             for (;true;) {
                                 size_type f;
-                                DSOUT() << "el_index: " << el_index << std::endl;
+                                DSOUT() << std::string(depth*2, ' ') << actual->id << ":el_index: " << el_index << std::endl;
                                 if (el_index == 0) {
                                     f = from;
                                 } else {
                                     f = results.back().to_;
+                                    DSOUT() << std::string(depth*2, ' ') << actual->id << ":f <- " << f << " @ " << results.back().elem->id << std::endl;
                                 }
                                 results.push_back(matchers[el_index].match(target, f, depth + 1));
-                                DSOUT() << "added result: [" << results.back().from_ << "," << results.back().to_ << ")" << std::endl;
                                 if (results.back().is_unmatch()) {
                                     if (el_index == 0) {
                                         break;
                                     } else {
                                         --el_index;
+                                        DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers--" << std::endl;
                                         matchers.pop_back();
                                         results.pop_back();
                                     }
@@ -379,9 +399,11 @@ namespace CFG {
                                     if (el_index == actual->subsidiaries.size() - 1) {
                                         Result r(target, actual, results.front().from_, results.back().to_);
                                         r.inners = results;
+                                        DSOUT() << std::string(depth*2, ' ') << "r: [" << r.from_ << "," << r.to_ << ")" << std::endl;
                                         return r;
                                     } else {
                                         ++el_index;
+                                        DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers++" << std::endl;
                                         matchers.push_back(Matcher(actual->nth_actual(el_index)));
                                     }
                                 }
@@ -399,13 +421,12 @@ namespace CFG {
             }
 
             void    shift_phase(const Result& result) {
-                // DSOUT() << elem->id << ": " << phase_ << ": " << result.is_unmatch() << std::endl;
                 if (elem->is_terminal()) {
                     if (phase_ == NTH_RESULT && tos.empty()) {
                         phase_ = FINISHED;
                     }
                 } else if (elem->is_repetition()) {
-                    if (phase_ == NTH_RESULT && (result.is_unmatch() || results.empty())) {
+                    if (phase_ == NTH_RESULT && matchers.size() == 0) {
                         phase_ = FINISHED;
                     }
                 } else if (elem->is_selection()) {
@@ -419,14 +440,19 @@ namespace CFG {
                 }
             }
 
-            Result  match(const string_type& target, size_type from, size_type depth = 0) {
-                DSOUT() << std::string(depth*2, ' ') << "[try!] from: " << from << ": for " << elem->id << std::endl;
+            Result  match(const string_type& target, size_type from, size_type depth = 1) {
+                Element* actual = elem->actual();
+                DSOUT() << std::string((depth-1)*2+6, ' ') << "[try!] from: " << from << ": for " << actual->id
+                    << " phase: " << phase_ << " "
+                    << actual->is_terminal() << actual->is_repetition() << actual->is_selection() << actual->is_concat()
+                    << std::endl;
                 Result r = match_phase(target, from, depth);
                 shift_phase(r);
                 if (r.is_unmatch()) {
-                    DSOUT() << std::string(depth*2, ' ') << "[done] from: " << from << ": *fail* for " << elem->id << std::endl;
+                    DSOUT() << std::string((depth-1)*2+6, ' ') << "[FAIL] from: " << from << ": *fail* for " << elem->id << std::endl;
                 } else {
-                    DSOUT() << std::string(depth*2, ' ') << "[done] from: " << from << ": matched [" << r.from_ << "," << r.to_ << ") for " << elem->id << std::endl;
+                    // DSOUT() << std::string(depth*2, ' ') << "[done] from: " << from << ": matched " << r.from_ << "," << r.to_ << ") for " << elem->id << ", " << r.inners.size() << std::endl;
+                    DSOUT() << std::string((depth-1)*2+6, ' ') << "[done] from: " << from << ": matched " << r << std::endl;
                 }
                 return r;
             }
@@ -496,6 +522,7 @@ namespace CFG {
     };
 }
 
+
 int main(int argc, char **argv) {
     const std::string target = argc <= 1 ? "123" : argv[1];
     CFG::Grammar g;
@@ -547,6 +574,7 @@ int main(int argc, char **argv) {
         .append("(")
         .append("wpws")
         .append(")");
+    g.def_repetition("paren_words", "paren_word", 1);
 
     g.def_concat("simple")
         .append("(")
