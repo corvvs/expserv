@@ -208,19 +208,21 @@ namespace CFG {
 
             Element*                elem;
             t_phase                 phase_;
+            size_type               from;
             size_type               el_index;
             std::vector<size_type>  tos;
             std::vector<Matcher>    matchers;
             std::vector<Result>     results;
 
-            Matcher(Element* from):
-                elem(from), phase_(NOT_STARTED) {
+            Matcher(Element* elem, size_type from):
+                elem(elem), phase_(NOT_STARTED), from(from) {
                     // DSOUT() << from->id << std::endl;
                 }
 
             Matcher&    operator=(const Matcher& rhs) {
                 elem = rhs.elem;
                 phase_ = rhs.phase_;
+                from = rhs.from;
                 el_index = rhs.el_index;
                 tos = rhs.tos;
                 matchers = rhs.matchers;
@@ -272,7 +274,8 @@ namespace CFG {
                         } else {
                             phase_ = NTH_RESULT;
                             el_index = 0;
-                            matchers.push_back(Matcher(actual->front_actual()));
+                            matchers.push_back(Matcher(actual->front_actual(), from));
+                            DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers++ " << matchers.back().elem->id << std::endl;
                         }
                     }
                     switch (phase_) {
@@ -281,7 +284,7 @@ namespace CFG {
                             DSOUT() << std::string(depth*2, ' ') << "[" << actual->ge << ", " << actual->le << "], matchers: " << matchers.size() << std::endl;
                             for (;true;) {
                                 size_type f = results.empty() ? from : results.back().to_;
-                                Result r = matchers.back().match(target, f, depth + 1);
+                                Result r = matchers.back().match(target, depth + 1);
                                 DSOUT() << std::string(depth*2, ' ') << actual->id << ": returned: " << r << std::endl;
                                 // [反復におけるゼロ幅リザルトについて]
                                 // - ゼロ幅リザルトの位置は問題にならない
@@ -294,13 +297,14 @@ namespace CFG {
                                 // r は el_index + 1 個目のリザルト
                                 bool is_re_zero = r.is_zerowidth() && !r.is_unmatch() && !results.empty() && !results.back().is_zerowidth();
                                 bool is_too_much_zero = r.is_zerowidth() && elem->ge < el_index;
-                                DSOUT() << std::string(depth*2, ' ') << actual->id << ":results++" << std::endl;
                                 results.push_back(r);
+                                DSOUT() << std::string(depth*2, ' ') << actual->id << ": results++ " << results.back().elem->id << std::endl;
                                 DSOUT() << std::string(depth*2, ' ') << r.is_unmatch() << is_re_zero << is_too_much_zero << std::endl;
                                 if (r.is_unmatch() || is_re_zero || is_too_much_zero) {
                                     // マッチしなかった
+                                    DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers-- " << matchers.back().elem->id << std::endl;
                                     matchers.pop_back();
-                                    DSOUT() << std::string(depth*2, ' ') << actual->id << ":results--" << std::endl;
+                                    DSOUT() << std::string(depth*2, ' ') << actual->id << ": results-- " << results.back().elem->id << std::endl;
                                     results.pop_back();
                                     if (el_index == 0) {
                                         results.clear();
@@ -322,7 +326,8 @@ namespace CFG {
                                 } else {
                                     // マッチした
                                     ++el_index;
-                                    matchers.push_back(Matcher(actual->front_actual()));
+                                    matchers.push_back(Matcher(actual->front_actual(), results.back().to_));
+                                    DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers++ " << matchers.back().elem->id << std::endl;
                                     DSOUT() << std::string(depth*2, ' ') << elem->id << ":" << depth << ":" << results.size() << ": [" << results.back().from_ << "," << results.back().to_ << ")" << std::endl;
                                     // この時点で el_index はリザルトの個数になる
                                 }
@@ -342,17 +347,22 @@ namespace CFG {
                         } else {
                             phase_ = NTH_RESULT;
                             el_index = 0;
-                            matchers.push_back(Matcher(actual->front_actual()));
+                            matchers.push_back(Matcher(actual->front_actual(), from));
                         }
                     }
                     switch (phase_) {
                         case NTH_RESULT: {
                             for (; el_index < actual->subsidiaries.size() ;) {
-                                Result r = matchers[0].match(target, from, depth + 1);
-                                if (!r.is_unmatch()) { return r; }
+                                Result r = matchers[0].match(target, depth + 1);
+                                if (!r.is_unmatch()) {
+                                    Result rr(target, actual, r.from_, r.to_);
+                                    rr.inners.clear();
+                                    rr.inners.push_back(r);
+                                    return rr;
+                                }
                                 ++el_index;
                                 if (el_index >= actual->subsidiaries.size()) { break; }
-                                matchers[0] = Matcher(actual->nth_actual(el_index));
+                                matchers[0] = Matcher(actual->nth_actual(el_index), from);
                             }
                             return Result::unmatch(target, actual);
                         }
@@ -371,7 +381,7 @@ namespace CFG {
                             phase_ = NTH_RESULT;
                             el_index = 0;
                             DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers++" << std::endl;
-                            matchers.push_back(Matcher(actual->nth_actual(el_index)));
+                            matchers.push_back(Matcher(actual->nth_actual(el_index), from));
                         }
                     }
                     switch (phase_) {
@@ -385,7 +395,7 @@ namespace CFG {
                                     f = results.back().to_;
                                     DSOUT() << std::string(depth*2, ' ') << actual->id << ":f <- " << f << " @ " << results.back().elem->id << std::endl;
                                 }
-                                results.push_back(matchers[el_index].match(target, f, depth + 1));
+                                results.push_back(matchers[el_index].match(target, depth + 1));
                                 if (results.back().is_unmatch()) {
                                     if (el_index == 0) {
                                         break;
@@ -404,7 +414,7 @@ namespace CFG {
                                     } else {
                                         ++el_index;
                                         DSOUT() << std::string(depth*2, ' ') << actual->id << ": matchers++" << std::endl;
-                                        matchers.push_back(Matcher(actual->nth_actual(el_index)));
+                                        matchers.push_back(Matcher(actual->nth_actual(el_index), results.back().to_));
                                     }
                                 }
                             }
@@ -440,7 +450,7 @@ namespace CFG {
                 }
             }
 
-            Result  match(const string_type& target, size_type from, size_type depth = 1) {
+            Result  match(const string_type& target, size_type depth = 1) {
                 Element* actual = elem->actual();
                 DSOUT() << std::string((depth-1)*2+6, ' ') << "[try!] from: " << from << ": for " << actual->id
                     << " phase: " << phase_ << " "
@@ -511,8 +521,8 @@ namespace CFG {
                 throw std::runtime_error("no element for a key");
             }
             for (size_type i = 0; i < target.length(); ++i) {
-                Matcher head(&(it->second));
-                Result r = head.match(target, i);
+                Matcher head(&(it->second), i);
+                Result r = head.match(target);
                 if (!r.is_unmatch()) {
                     return r;
                 }
@@ -526,64 +536,49 @@ namespace CFG {
 int main(int argc, char **argv) {
     const std::string target = argc <= 1 ? "123" : argv[1];
     CFG::Grammar g;
-    // g.def_charset("alpha_lower", 'a', 'z');
-    // g.def_charset("alpha_upper", 'A', 'Z');
-    // g.def_charset("_", "_");
+    {
+        // scheme
+        g.def_charset("alpha", 'a', 'z');
+        g.def_charset("Alpha", 'A', 'A');
+        g.def_selection("ALPHA")
+            .append("alpha").append("Alpha");
+        g.def_charset("DIGIT", '0', '9');
+        g.def_selection("ALPHA/DIGIT/+/-/.")
+                    .append("ALPHA").append("DIGIT").append(g.def_charset("+/-/.", "+-."));
+        g.def_repetition("*(ALPHA/DIGIT/+/-/.)" , "ALPHA/DIGIT/+/-/.", 0, -1);
+        g.def_concat("scheme")
+            .append("ALPHA")
+            .append("*(ALPHA/DIGIT/+/-/.)");
+    }
+    {
+        // ipv4address
+        g.def_concat("ipv4address")
+            .append("dec-octet").append(".").append("dec-octet").append(".").append("dec-octet").append(".").append("dec-octet");
+        g.def_selection("dec-octet")
+            .append("DIGIT")
+            .append("10-99")
+            .append("100-199")
+            .append("200-249")
+            .append("250-255");
+        g.def_charset(".", ".");
+        g.def_charset("2", "2");
+        g.def_charset("1-9", '1', '9');
+        g.def_charset("0-4", '0', '4');
+        g.def_charset("0-5", '0', '5');
+        g.def_concat("10-99")
+            .append("1-9").append("DIGIT");
+        g.def_concat("100-199")
+            .append(g.def_charset("1", "1")).append("DIGIT").append("DIGIT");
+        g.def_concat("200-249")
+            .append("2").append("0-4").append("DIGIT");
+        g.def_concat("250-255")
+            .append("2").append("0-5").append("0-5");
+    }
 
-    // g.def_selection("word_head") // A-Za-z_
-    //     .append("alpha_lower")
-    //     .append("alpha_upper")
-    //     .append("_");
-    // g.def_charset("digit", '0', '9'); // 0-9
-
-    // g.def_selection("word_body") // A-Za-z0-9_
-    //     .append("word_head")
-    //     .append("digit");
-    // g.def_repetition("word_bodies", "word_body", 0);
-    // g.def_concat("word") // (A-Za-z_)(A-Za-z0-9_)*
-    //     .append("word_head")
-    //     .append("word_bodies");
-
-    // g.def_charset("sp", " \t");
-    // g.def_repetition("sps", "sp", 0);
-    // g.def_charset("comma", ",");
-    // g.def_concat("separator") // [ \t]*,[ \t]*
-    //     .append("sps")
-    //     .append("comma")
-    //     .append("sps");
-
-    // g.def_concat("word_after_head")
-    //     .append("separator")
-    //     .append(g.def_repetition("word?", "word", 0, 1));
-    // g.def_repetition("words_after_head", "word_after_head", 0);
-
-    // g.def_concat("list_of_words")
-    //     .append("word")
-    //     .append("words_after_head");
-
-
-    g.def_charset("word", "a", 0, -1);
-    // g.def_repetition("word", "az", 0);
-    g.def_charset("(", "(");
-    g.def_charset(")", ")");
-    g.def_selection("word_or_paren_word")
-        .append("word")
-        .append("paren_word");
-    g.def_repetition("wpws", "word_or_paren_word", 0);
-    g.def_concat("paren_word")
-        .append("(")
-        .append("wpws")
-        .append(")");
-    g.def_repetition("paren_words", "paren_word", 1);
-
-    g.def_concat("simple")
-        .append("(")
-        .append("word")
-        .append(")");
 
 
     // CFG::Grammar::Result r = g.match("list_of_words", target);
-    CFG::Grammar::Result r = g.match("paren_word", target);
+    CFG::Grammar::Result r = g.match("ipv4address", target);
 
     DSOUT() << "\"" << target << "\"" << " -> " << "\"" << r.str() << "\"" << std::endl;
 }
