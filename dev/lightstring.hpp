@@ -17,6 +17,8 @@ public:
     typedef typename string_class::const_iterator   const_iterator;
     typedef typename string_class::size_type        size_type;
     static const typename string_class::size_type   npos = string_class::npos;
+    typedef typename string_class::reference        reference;
+    typedef typename string_class::const_reference  const_reference;
 
 private:
 
@@ -83,6 +85,14 @@ public:
 
     const_iterator  end() const {
         return base.begin() + last;
+    }
+
+    const_reference operator[](size_type pos) const {
+        return base[first + pos];
+    }
+
+    reference       operator[](size_type pos) {
+        return base[first + pos];
     }
 
     size_type       find_first_of(const string_class& str, size_type pos = 0) const {

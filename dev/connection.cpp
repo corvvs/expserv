@@ -78,6 +78,7 @@ case CONNECTION_RECEIVING: {
     } catch (http_error err) {
 
         // 受信中のHTTPエラー
+        DSOUT() << err.get_status() << ":" << err.what() << std::endl;
         current_res = router_->respond_error(current_req, err);
         ready_sending(observer);
 
@@ -121,6 +122,7 @@ case CONNECTION_RESPONDING: {
     } catch (http_error err) {
 
         // 送信中のHTTPエラー -> もうだめ
+        DSOUT() << err.get_status() << ":" << err.what() << std::endl;
         die(observer);
 
     }
@@ -138,6 +140,7 @@ case CONNECTION_SHUTTING_DOWN: {
 
     } catch (http_error err) {
 
+        DSOUT() << err.get_status() << ":" << err.what() << std::endl;
         die(observer);
 
     }

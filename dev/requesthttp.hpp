@@ -17,8 +17,10 @@ enum t_http_request_parse_progress {
     PARSE_REQUEST_REQLINE_START,
     // 開始行の終了位置 を探している
     PARSE_REQUEST_REQLINE_END,
+    // ヘッダの終了位置 を探している
+    PARSE_REQUEST_HEADER_SECTION_END,
     // ヘッダ を探している
-    PARSE_REQUEST_HEADER,
+//     PARSE_REQUEST_HEADER,
     // ボディ を探している
     PARSE_REQUEST_BODY,
     PARSE_REQUEST_OVER,
@@ -51,6 +53,11 @@ private:
     size_t                          start_of_body;
     // size_t                          end_of_body;
 
+    // 解析中の情報
+    // ヘッダ終端探索時において, 最後に遭遇したCRLFのレンジ
+    IndexRange                      crlf_in_header;
+
+
     // 確定した情報
     HTTP::t_method                  http_method;
     byte_string                     request_path;
@@ -75,6 +82,8 @@ private:
     bool    seek_reqline_end(size_t len);
     // [begin, end) を要求行としてパースする
     void    parse_reqline(const light_string& line);
+    // ヘッダ行全体をパースする
+    void    parse_header_lines(const byte_string& bytestring, ssize_t from, ssize_t len);
     // ヘッダ行をパースする
     void    parse_header_line(const light_string& line);
     // ヘッダから必要な情報を取る

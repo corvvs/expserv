@@ -10,6 +10,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					requesthttp.cpp\
 					responsehttp.cpp\
 					parserhelper.cpp\
+					IndexRange.cpp\
 					time.cpp\
 					http_error.cpp\
 					http.cpp\

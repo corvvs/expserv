@@ -58,48 +58,47 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
                 end_of_reqline);
             // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
             parse_reqline(raw_req_line);
-            parse_progress = PARSE_REQUEST_HEADER;
+            parse_progress = PARSE_REQUEST_HEADER_SECTION_END;
 
             continue;
         }
 
-        case PARSE_REQUEST_HEADER: {
-
-            // ヘッダを解析する
-            // ヘッダ行の終わりを探索
-            ParserHelper::index_range res = ParserHelper::find_crlf_header_value(bytebuffer, mid, len);
-            mid += res.second;
+        case PARSE_REQUEST_HEADER_SECTION_END: {
+            // ヘッダ部の終わりを探索する
+            // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
+            // mid以降についてCRLFを検索する:
+            // - 見つかった
+            //   - first == crlf_in_header.second である
+            //     -> あたり. このCRLFがヘッダの終わりを示す.
+            //   - そうでない
+            //     -> はずれ. このCRLFを crlf_in_header として続行.
+            // - 見つからなかった
+            //   -> もう一度受信する
+            IndexRange res = ParserHelper::find_crlf(bytebuffer, mid, len);
             DSOUT() << res << std::endl;
+            mid = res.second;
             if (res.is_invalid()) {
                 return ;
             }
-            DSOUT() << "detected end of a header" << std::endl;
-            // CRLFが見つかった
-            // -> [mid, res.first) が1つのヘッダ
-            DSOUT() << "bytebuffer:" << std::endl << bytebuffer << std::endl;
-            DSOUT() << "start_of_current_header: " << start_of_current_header << std::endl;
-            DSOUT() << "mid: " << mid << std::endl;
-            // DSOUT() << "[" << start_of_current_header << "," << mid - (res.second - res.first) << ")" << std::endl;
-            light_string header_line(
-                bytebuffer,
-                start_of_current_header,
-                mid - res.length());
-            DSOUT() << "header:" << std::endl << header_line.str() << std::endl;
-            if (header_line.length() > 0) {
-                // header_line が空文字列でない
-                // -> ヘッダとしてパースを試みる
-                parse_header_line(header_line);
+            DSOUT() << crlf_in_header << std::endl;
+            if (crlf_in_header.second != res.first) {
+                // はずれ
+                crlf_in_header = res;
                 continue;
             }
-            // header_line が空文字列
-            // -> 空行が見つかったのでそこでヘッダが終わる
-            end_of_header = mid - (res.second - res.first);
-            // DSOUT() << "* determined end_of_header *" << std::endl;
-            // DSOUT() << "end_of_header: " << end_of_header << std::endl;
+            // あたり
+            DSOUT() << "HIT!!" << std::endl;
+            end_of_header = res.first;
+            start_of_body = res.second;
+            DSOUT()
+                << "\"\"\"" << std::endl
+                << byte_string(bytebuffer.begin() + start_of_header, bytebuffer.begin() + end_of_header)
+                << std::endl
+                << "\"\"\"" << std::endl;
+            // [start_of_header, end_of_header) を解析する
+            parse_header_lines(bytebuffer, start_of_header, end_of_header - start_of_header);
             extract_control_headers();
-            start_of_body = mid;
             parse_progress = PARSE_REQUEST_BODY;
-
             continue;
         }
 
@@ -150,16 +149,17 @@ bool    RequestHTTP::seek_reqline_start(size_t len) {
 
 bool    RequestHTTP::seek_reqline_end(size_t len) {
     // DSOUT() << "* determining end_of_reqline... *" << std::endl;
-    ParserHelper::index_range res = ParserHelper::find_crlf(bytebuffer, mid, len);
-    mid += res.second;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, mid, len);
+    mid = res.second;
     if (res.is_invalid()) { return false; }
     // CRLFが見つかった
-    end_of_reqline = mid - (res.second - res.first);
+    end_of_reqline = res.first;
     start_of_header = mid;
     // -> end_of_reqline が8192バイト以内かどうか調べる。
     if (MAX_REQLINE_END <= end_of_reqline) {
         throw http_error("Invalid Response: request line is too long", HTTP::STATUS_URI_TOO_LONG);
     }
+    crlf_in_header = IndexRange(start_of_header, start_of_header);
     return true;
 }
 
@@ -197,14 +197,36 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
     start_of_current_header = mid;
 }
 
+void    RequestHTTP::parse_header_lines(const byte_string& bytebuffer, ssize_t from, ssize_t len) {
+    ssize_t movement = 0;
+    while(true) {
+        IndexRange res = ParserHelper::find_crlf_header_value(bytebuffer, from + movement, len - movement);
+        DSOUT() << "FOUND: " << res << std::endl;
+        if (res.is_invalid()) {
+            break;
+        }
+        // [from + movement, res.first) が1つのヘッダ
+        light_string header_line(
+            bytebuffer,
+            from + movement,
+            res.first);
+        if (header_line.length() > 0) {
+            // header_line が空文字列でない
+            // -> ヘッダとしてパースを試みる
+            parse_header_line(header_line);
+        }
+        // else は起きえないはず・・・
+
+        // from + movement = res.second
+        DSOUT() << "movement: " << movement << " -> " << res.second - from << std::endl;
+        movement = res.second - from;
+    }
+}
+
+
 void    RequestHTTP::parse_header_line(const light_string& line) {
     // ヘッダを解析する
     start_of_current_header = mid;
-    // DSOUT()
-    //     << "found a header: "
-    //     << std::endl
-    //     << line
-    //     << std::endl;
 
     light_string::size_type  coron_pos = line.find_first_of(ParserHelper::HEADER_KV_SPLITTER);
     if (coron_pos == byte_string::npos) {
