@@ -21,10 +21,13 @@ namespace ParserHelper {
     // LF, または CRLF を見つける.
     // 見つかった場合, LFまたはCRLFの [開始位置, 終了位置の次) のペアを(絶対位置で)返す.
     // 見つからない場合, [len+1,len] を返す.
-    IndexRange find_crlf(const byte_string& str, ssize_t from, ssize_t len);
+    IndexRange  find_crlf(const byte_string& str, ssize_t from, ssize_t len);
 
     // ヘッダー値用のfind_crlf; obs-fold をスルーする
-    IndexRange find_crlf_header_value(const byte_string& str, ssize_t from, ssize_t len);
+    IndexRange  find_crlf_header_value(const byte_string& str, ssize_t from, ssize_t len);
+
+    // obs-foldがあれば, そのレンジを返す
+    IndexRange  find_obs_fold(const byte_string& str, ssize_t from, ssize_t len);
 
     // 文字列の先頭から, CRLRおよびLFをすべてスキップした位置のインデックスを返す
     ssize_t     ignore_crlf(const byte_string& str, ssize_t from, ssize_t len);

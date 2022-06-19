@@ -8,9 +8,14 @@
 struct IndexRange: public std::pair<ssize_t, ssize_t> {
     IndexRange();
     IndexRange(ssize_t f, ssize_t t);
-    static IndexRange   invalid();
     bool                is_invalid() const;
     ssize_t             length() const;
+
+    first_type&         from();
+    const first_type&   from() const;
+
+    second_type&        to();
+    const second_type&  to() const;
 };
 
 std::ostream&   operator<<(std::ostream& out, const IndexRange& r);

@@ -75,27 +75,19 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
             // - 見つからなかった
             //   -> もう一度受信する
             IndexRange res = ParserHelper::find_crlf(bytebuffer, mid, len);
-            DSOUT() << res << std::endl;
             mid = res.second;
             if (res.is_invalid()) {
                 return ;
             }
-            DSOUT() << crlf_in_header << std::endl;
-            if (crlf_in_header.second != res.first) {
+            if (ps.crlf_in_header.second != res.first) {
                 // はずれ
-                crlf_in_header = res;
+                ps.crlf_in_header = res;
                 continue;
             }
             // あたり
-            DSOUT() << "HIT!!" << std::endl;
+            // -> [start_of_header, end_of_header) を解析する
             end_of_header = res.first;
             start_of_body = res.second;
-            DSOUT()
-                << "\"\"\"" << std::endl
-                << byte_string(bytebuffer.begin() + start_of_header, bytebuffer.begin() + end_of_header)
-                << std::endl
-                << "\"\"\"" << std::endl;
-            // [start_of_header, end_of_header) を解析する
             parse_header_lines(bytebuffer, start_of_header, end_of_header - start_of_header);
             extract_control_headers();
             parse_progress = PARSE_REQUEST_BODY;
@@ -159,7 +151,7 @@ bool    RequestHTTP::seek_reqline_end(size_t len) {
     if (MAX_REQLINE_END <= end_of_reqline) {
         throw http_error("Invalid Response: request line is too long", HTTP::STATUS_URI_TOO_LONG);
     }
-    crlf_in_header = IndexRange(start_of_header, start_of_header);
+    ps.crlf_in_header = IndexRange(start_of_header, start_of_header);
     return true;
 }
 
@@ -198,13 +190,18 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
 }
 
 void    RequestHTTP::parse_header_lines(const byte_string& bytebuffer, ssize_t from, ssize_t len) {
+    DSOUT()
+        << "\"\"\"" << std::endl
+        << byte_string(bytebuffer.begin() + from, bytebuffer.begin() + from + len)
+        << std::endl
+        << "\"\"\"" << std::endl;
     ssize_t movement = 0;
     while(true) {
         IndexRange res = ParserHelper::find_crlf_header_value(bytebuffer, from + movement, len - movement);
-        DSOUT() << "FOUND: " << res << std::endl;
         if (res.is_invalid()) {
             break;
         }
+        // DSOUT() << "FOUND: " << res << std::endl;
         // [from + movement, res.first) が1つのヘッダ
         light_string header_line(
             bytebuffer,
@@ -212,13 +209,13 @@ void    RequestHTTP::parse_header_lines(const byte_string& bytebuffer, ssize_t f
             res.first);
         if (header_line.length() > 0) {
             // header_line が空文字列でない
-            // -> ヘッダとしてパースを試みる
+            // -> ヘッダ行としてパースを試みる
             parse_header_line(header_line);
         }
         // else は起きえないはず・・・
 
         // from + movement = res.second
-        DSOUT() << "movement: " << movement << " -> " << res.second - from << std::endl;
+        // DSOUT() << "movement: " << movement << " -> " << res.second - from << std::endl;
         movement = res.second - from;
     }
 }
@@ -254,17 +251,28 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
     } else {
         val = val.substr(val_head, val_tail - val_head + 1);
     }
-
-    // Keyの正規化; 変更するので light_string にしない
-    byte_string norm_key(key.str());
-    ParserHelper::normalize_header_key(norm_key);
-    std::pair<header_dict_type::iterator, bool> res_insertion
-        = header_dict.insert(
-            header_dict_type::value_type(norm_key, val)
-        );
-    if (res_insertion.second) {
-        header_keys.push_back(norm_key);
+    
+    // val の obs-foldを除去し, 全体を string に変換する.
+    // obs-fold を検知した場合, そのことを記録する
+    byte_string sval;
+    {
+        byte_string pval = val.str();
+        ssize_t movement = 0;
+        while (true) {
+            IndexRange res = ParserHelper::find_obs_fold(pval, movement, val.length() - movement);
+            if (res.is_invalid()) {
+                sval.append(pval, movement, res.second - movement);
+                break;
+            }
+            sval.append(pval, movement, res.first - movement);
+            sval.append(ParserHelper::SP);
+            DSOUT() << "found obs-fold: " << res << std::endl;
+            ps.found_obs_fold = true;
+            movement = res.second;
+        }
+        // DSOUT() << "sval: \"" << sval << "\"" << std::endl;
     }
+
     DSOUT()
         << "* splitted a header *"
         << std::endl
@@ -272,17 +280,19 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
         << std::endl
         << "Val: " << val.str()
         << std::endl;
+    header_holder.add_item(key, sval);
 }
 
 void    RequestHTTP::extract_control_headers() {
     // [Host]
     {
-        header_host = header_dict["host"].str();
-        if (header_host.length() == 0) {
+        const byte_string* host = header_holder.get_val("host");
+        if (!host || *host == "") {
             // host が空
             // 1.1ならbad request
             throw http_error("no host", HTTP::STATUS_BAD_REQUEST);
         }
+        header_host = *host;
         // DSOUT() << "host is: " << header_host << std::endl;
     }
 
@@ -297,20 +307,21 @@ void    RequestHTTP::extract_control_headers() {
                 break;
             }
             default: {
-                byte_string cl = header_dict["content-length"].str();
-                if (cl == "") {
+
+                const byte_string *cl = header_holder.get_val("content-length");
+                if (!cl || *cl == "") {
                     content_length = -1;
                 } else {
-                    content_length = ParserHelper::stou(cl);
+                    content_length = ParserHelper::stou(*cl);
                 }
             }
         }
-        // DSOUT() << "content-length is: " << content_length << std::endl;
+        DSOUT() << "content-length is: " << content_length << std::endl;
     }
 
     // [Transfer-Encoding]
     {
-        byte_string te = header_dict["transfer-encoding"].str();
+        // byte_string* te = heade  r_holder.get_val("transfer-encoding");
         
     }
 }
@@ -337,15 +348,6 @@ size_t  RequestHTTP::parsed_size() const {
 
 HTTP::t_version RequestHTTP::get_http_version() const {
     return http_version;
-}
-
-std::pair<RequestHTTP::light_string, bool>
-                RequestHTTP::get_header(const byte_string& key) const {
-    header_dict_type::const_iterator result = header_dict.find(key);
-    if (result == header_dict.end()) {
-        return std::pair<light_string, bool>(light_string(""), false);
-    }
-    return std::pair<light_string, bool>(result->second, true);
 }
 
 RequestHTTP::byte_string::const_iterator

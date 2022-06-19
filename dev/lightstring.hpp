@@ -2,6 +2,7 @@
 # define LIGHTSTRING_HPP
 # include <string>
 # include <algorithm>
+# include "IndexRange.hpp"
 
 const std::string blank_str = "";
 
@@ -40,6 +41,9 @@ public:
 
     LightString(const string_class& str, size_type fi, size_type li):
         base(str), first(fi), last(li) {}
+
+    LightString(const string_class& str, const IndexRange& range):
+        base(str), first(range.first), last(range.second) {}
 
     LightString(const LightString& lstr, size_type fi, size_type li):
         base(lstr.base), first(lstr.first + fi), last(lstr.first + li) {}
@@ -150,5 +154,10 @@ public:
         return LightString(base, begin() + pos, begin() + pos + rlen);
     }
 };
+
+template <class T>
+std::ostream&   operator<<(std::ostream& out, const LightString<T>& ls) {
+    return out << typename LightString<T>::string_class(ls.begin(), ls.end());
+}
 
 #endif

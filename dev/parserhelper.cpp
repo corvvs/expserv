@@ -15,16 +15,16 @@ IndexRange ParserHelper::find_crlf(const byte_string& str, ssize_t from, ssize_t
 }
 
 IndexRange ParserHelper::find_crlf_header_value(const byte_string& str, ssize_t from, ssize_t len) {
-    DSOUT() << "target: \"" << byte_string(str.begin() + from, str.begin() + from + len) << "\"" << std::endl;
+    // DSOUT() << "target: \"" << byte_string(str.begin() + from, str.begin() + from + len) << "\"" << std::endl;
     ssize_t movement = 0;
     while (true) {
         ssize_t rfrom = from + movement;
         ssize_t rlen = len - movement;
-        DSOUT() << "finding from: " << rfrom << ", len: " << rlen << std::endl;
+        // DSOUT() << "finding from: " << rfrom << ", len: " << rlen << std::endl;
         IndexRange r = find_crlf(str, rfrom, rlen);
         if (!r.is_invalid()) {
             // is obs-fold ?
-            DSOUT() << "is obs-fold?? " << r << std::endl;
+            // DSOUT() << "is obs-fold?? " << r << std::endl;
             if (r.second < from + len && is_sp(str[r.second])) {
                 DSOUT() << "is obs-fold!!" << std::endl;
                 movement = r.second - from;
@@ -35,6 +35,28 @@ IndexRange ParserHelper::find_crlf_header_value(const byte_string& str, ssize_t 
         break;
     }
     return IndexRange(from + len + 1, from + len);
+}
+
+IndexRange ParserHelper::find_obs_fold(const byte_string& str, ssize_t from, ssize_t len) {
+    ssize_t movement = 0;
+    while (true) {
+        ssize_t rfrom = from + movement;
+        ssize_t rlen = len - movement;
+        IndexRange r = find_crlf(str, rfrom, rlen);
+        if (!r.is_invalid()) {
+            ssize_t i;
+            for (i = 0; r.second + i < from + len && is_sp(str[r.second + i]); ++i);
+            DSOUT() << r << " i: " << i << std::endl;
+            if (i < 1) {
+                // from + movement = r.second
+                movement = r.second - from;
+                continue;
+            }
+            // obs-fold!!
+            return IndexRange(r.first, r.second + i);
+        }
+        return r;
+    }
 }
 
 ssize_t      ParserHelper::ignore_crlf(const byte_string& str, ssize_t from, ssize_t len) {

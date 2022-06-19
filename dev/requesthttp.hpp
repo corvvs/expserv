@@ -4,6 +4,7 @@
 # include <vector>
 # include <map>
 # include <string>
+# include <list>
 # include <utility>
 # include <sstream>
 # include "test_common.hpp"
@@ -11,6 +12,7 @@
 # include "http_error.hpp"
 # include "parserhelper.hpp"
 # include "lightstring.hpp"
+# include "HeaderHTTPItem.hpp"
 
 enum t_http_request_parse_progress {
     // 開始行の開始位置 を探している
@@ -38,6 +40,18 @@ public:
     typedef LightString<HTTP::byte_type>    light_string;
     typedef std::map<byte_string, light_string>
                                             header_dict_type;
+    typedef HeaderHTTPItem::header_val_type header_val_type;
+
+
+    struct ParserStatus {
+        // ヘッダ終端探索時において, 最後に遭遇したCRLFのレンジ
+        IndexRange                  crlf_in_header;
+        // ヘッダ行解析において obs-fold に遭遇したかどうか
+        bool                        found_obs_fold;
+
+        ParserStatus():
+            found_obs_fold(false) {}
+    };
 
 private:
     byte_string                     bytebuffer;
@@ -54,8 +68,7 @@ private:
     // size_t                          end_of_body;
 
     // 解析中の情報
-    // ヘッダ終端探索時において, 最後に遭遇したCRLFのレンジ
-    IndexRange                      crlf_in_header;
+    ParserStatus                    ps;
 
 
     // 確定した情報
@@ -66,12 +79,7 @@ private:
     size_t                          content_length;
 
     // [HTTPヘッダ]
-
-    // HTTPヘッダのキーが登場順に入る
-    std::vector< byte_string >      header_keys;
-    // HTTPヘッダのキーと値
-    header_dict_type                header_dict;
-
+    HeaderHTTPHolder                header_holder;
     byte_string                     header_host;
 
     // [パース関数群]
@@ -86,6 +94,7 @@ private:
     void    parse_header_lines(const byte_string& bytestring, ssize_t from, ssize_t len);
     // ヘッダ行をパースする
     void    parse_header_line(const light_string& line);
+    
     // ヘッダから必要な情報を取る
     void    extract_control_headers();
 
@@ -108,12 +117,6 @@ public:
     // リクエストのHTTPバージョン
     HTTP::t_version
             get_http_version() const;
-
-    // 指定した key のヘッダーを取得する
-    // - first: そのヘッダーが存在するかどうか
-    // - second: そのヘッダーの value; 存在しない場合は空文字列
-    std::pair<light_string, bool>
-            get_header(const byte_string& key) const;
 
     // リクエスト本文の開始位置
     byte_string::const_iterator
