@@ -21,12 +21,14 @@ HTTP::t_version  discriminate_request_version(
     throw http_error("unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
+RequestHTTP::ParserStatus::ParserStatus(): found_obs_fold(false) {}
+
 RequestHTTP::RequestHTTP():
     mid(0),
-    parse_progress(PARSE_REQUEST_REQLINE_START),
-    http_method(HTTP::METHOD_UNKNOWN),
-    http_version(HTTP::V_UNKNOWN)
+    parse_progress(PARSE_REQUEST_REQLINE_START)
 {
+    cp.http_method = HTTP::METHOD_UNKNOWN;
+    cp.http_version = HTTP::V_UNKNOWN;
     bytebuffer.reserve(MAX_REQLINE_END);
 }
 
@@ -109,9 +111,9 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
             //   -> 続行
             // - (else) 受信済みサイズが content-length 以上なら
             //   -> 受信済みサイズ = mid - start_of_body が content-length になるよう調整
-            if (parsed_body_size() < content_length) { return; }
+            if (parsed_body_size() < cp.body_size) { return; }
 
-            mid = content_length + start_of_body;
+            mid = cp.body_size + start_of_body;
             parse_progress = PARSE_REQUEST_OVER;
 
             continue;
@@ -170,16 +172,16 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
             // HTTP/0.9?
             // HTTP/1.*?
 
-            http_method = discriminate_request_method(splitted[0].begin(), splitted[0].end());
-            DSOUT() << splitted[0] << " -> http_method: " << http_method << std::endl;
-            request_path = splitted[1];
-            DSOUT() << "request_path: " << request_path << std::endl;
+            cp.http_method = discriminate_request_method(splitted[0].begin(), splitted[0].end());
+            DSOUT() << splitted[0] << " -> http_method: " << cp.http_method << std::endl;
+            cp.request_path = splitted[1];
+            DSOUT() << "request_path: " << cp.request_path << std::endl;
             if (splitted.size() == 3) {
-                http_version = discriminate_request_version(splitted[2].begin(), splitted[2].end());
+                cp.http_version = discriminate_request_version(splitted[2].begin(), splitted[2].end());
             } else {
-                http_version = HTTP::V_0_9;
+                cp.http_version = HTTP::V_0_9;
             }
-            DSOUT() << splitted[2] << " -> http_version: " << http_version << std::endl;
+            DSOUT() << splitted[2] << " -> http_version: " << cp.http_version << std::endl;
             break;
         }
         default:
@@ -276,54 +278,85 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
     DSOUT()
         << "* splitted a header *"
         << std::endl
-        << "Key: " << key.str()
+        << "Key: " << key
         << std::endl
-        << "Val: " << val.str()
+        << "Val: " << sval
         << std::endl;
     header_holder.add_item(key, sval);
 }
 
 void    RequestHTTP::extract_control_headers() {
-    // [Host]
+    // 取得したヘッダから制御用の情報を抽出する.
+    // TODO: ここで何を抽出すべきか洗い出す
+
+    // [host]
+    cp.determine_host(header_holder);
+    // [bodyの長さ]
+    cp.determine_body_size(header_holder);
+
+    // [Content-Type]
     {
-        const byte_string* host = header_holder.get_val("host");
-        if (!host || *host == "") {
-            // host が空
-            // 1.1ならbad request
-            throw http_error("no host", HTTP::STATUS_BAD_REQUEST);
+        // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type header field is not present, the recipient MAY either assume a media type of "application/octet-stream" ([RFC2046], Section 4.5.1) or examine the data to determine its type.
+        const byte_string *ct = header_holder.get_val(HeaderHTTP::content_type);
+        if (!ct || *ct == "") {
+            cp.content_type = "applciation/octet-stream";
+            DSOUT() << "Content-Type -> \"" << cp.content_type << "\"" << std::endl;
+        } else {
+            cp.content_type = *ct;
+            DSOUT() << "Content-Type: \"" << *ct << "\"" << std::endl;
         }
-        header_host = *host;
-        // DSOUT() << "host is: " << header_host << std::endl;
     }
+}
 
-    // [Content-Length]
-    {
-        // bodyを持たないメソッドの場合は0
-        // そうでない場合, content-length の値を変換する
-        switch (http_method) {
-            case HTTP::METHOD_GET:
-            case HTTP::METHOD_DELETE: {
-                content_length = 0;
-                break;
-            }
-            default: {
-
-                const byte_string *cl = header_holder.get_val("content-length");
-                if (!cl || *cl == "") {
-                    content_length = -1;
-                } else {
-                    content_length = ParserHelper::stou(*cl);
-                }
-            }
+void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holder) {
+    // https://triple-underscore.github.io/RFC7230-ja.html#header.host
+    const HeaderHTTPHolder::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
+    if (!hosts || hosts->size() == 0) {
+        // HTTP/1.1 なのに host がない場合, BadRequest を出す
+        if (http_version == HTTP::V_1_1) {
+            throw http_error("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
         }
-        DSOUT() << "content-length is: " << content_length << std::endl;
+        header_host = ""; // no host
+    } else if (hosts->size() > 1) {
+        // Hostが複数ある場合, BadRequest を出す
+        throw http_error("multiple hosts", HTTP::STATUS_BAD_REQUEST);
+    } else {
+        // TODO: Hostの値のバリデーション (と, 必要ならBadRequest)
+        HTTP::light_string lhost(hosts->front());
+        DSOUT() << "lhost: " << lhost << std::endl;
+        if (!HTTP::Validator::is_valid_header_host(lhost)) {
+            throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
+        }
+    }
+}
+
+void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
+    // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
+    const HeaderHTTPHolder::value_list_type *transfer_encodings = holder.get_vals(HeaderHTTP::transfer_encoding);
+    if (transfer_encodings && transfer_encodings->back() == "chunked") {
+        // メッセージのヘッダにTransfer-Encodingが存在し, かつ一番最後のcodingがchunkedである場合
+        // -> chunkによって長さが決まる
+        DSOUT() << "by chunk" << std::endl;
+        return;
     }
 
-    // [Transfer-Encoding]
-    {
-        // byte_string* te = heade  r_holder.get_val("transfer-encoding");
-        
+    if (!transfer_encodings) {
+        // Transfer-Encodingがなく, Content-Lengthが不正である時
+        // -> 回復不可能なエラー
+        const byte_string *cl = holder.get_val(HeaderHTTP::content_length);
+        // Transfer-Encodingがなく, Content-Lengthが正当である場合
+        // -> Content-Length の値がボディの長さとなる.
+        if (cl) {
+            body_size = ParserHelper::stou(*cl);
+            // content-length の値が妥当でない場合, ここで例外が飛ぶ
+            DSOUT() << "body_size = " << body_size << std::endl;
+            return;
+        }
     }
+
+    // ボディの長さは0.
+    body_size = 0;
+    DSOUT() << "body_size is zero." << std::endl;
 }
 
 bool    RequestHTTP::is_ready_to_navigate() const {
@@ -347,7 +380,7 @@ size_t  RequestHTTP::parsed_size() const {
 }
 
 HTTP::t_version RequestHTTP::get_http_version() const {
-    return http_version;
+    return cp.http_version;
 }
 
 RequestHTTP::byte_string::const_iterator

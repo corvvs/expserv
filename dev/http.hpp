@@ -70,6 +70,27 @@ namespace HTTP {
 
     const byte_string   version_str(HTTP::t_version version);
     const byte_string   reason(HTTP::t_status status);
+
+    // 文字集合
+    namespace Charset {
+        // アルファベット・小文字
+        const HTTP::byte_string alpha_low = "abcdefghijklmnopqrstuvwxyz";
+        // アルファベット・大文字
+        const HTTP::byte_string alpha_up = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        // アルファベット
+        const HTTP::byte_string alpha = alpha_low + alpha_up;
+        // 数字
+        const HTTP::byte_string digit = "0123456789";
+        // 16進数における数字
+        const HTTP::byte_string hexdig = digit + "abcdef" + "ABCDEF";
+        // HTTPにおける非予約文字
+        const HTTP::byte_string unreserved = alpha + digit + "-._~";
+        const HTTP::byte_string gen_delims = ":/?#[]@";
+        const HTTP::byte_string sub_delims = "!$&'()*+.;=";
+
+        // 文字フィルターバッファ filter を charset で初期化する
+        void    fill_charset(unsigned char *filter, size_t n, const HTTP::byte_string& charset);
+    }
 }
 
 #endif

@@ -12,7 +12,8 @@
 # include "http_error.hpp"
 # include "parserhelper.hpp"
 # include "lightstring.hpp"
-# include "HeaderHTTPItem.hpp"
+# include "HeaderHTTP.hpp"
+# include "ValidatorHTTP.hpp"
 
 enum t_http_request_parse_progress {
     // 開始行の開始位置 を探している
@@ -21,8 +22,6 @@ enum t_http_request_parse_progress {
     PARSE_REQUEST_REQLINE_END,
     // ヘッダの終了位置 を探している
     PARSE_REQUEST_HEADER_SECTION_END,
-    // ヘッダ を探している
-//     PARSE_REQUEST_HEADER,
     // ボディ を探している
     PARSE_REQUEST_BODY,
     PARSE_REQUEST_OVER,
@@ -42,15 +41,31 @@ public:
                                             header_dict_type;
     typedef HeaderHTTPItem::header_val_type header_val_type;
 
-
     struct ParserStatus {
         // ヘッダ終端探索時において, 最後に遭遇したCRLFのレンジ
         IndexRange                  crlf_in_header;
         // ヘッダ行解析において obs-fold に遭遇したかどうか
         bool                        found_obs_fold;
 
-        ParserStatus():
-            found_obs_fold(false) {}
+        ParserStatus();
+    };
+
+    // リクエストの制御, ルーティングにかかわるパラメータ
+    struct ControlParams {
+        byte_string                     request_path;
+        HTTP::t_method                  http_method;
+        HTTP::t_version                 http_version;
+
+        // -1 は未指定をあらわす
+        size_t                      body_size;
+        byte_string                 header_host;
+        byte_string                 content_type;
+
+        // いろいろ抽出関数群
+
+        void    determine_host(const HeaderHTTPHolder& holder);
+        // リクエストのボディサイズ(にかかわるパラメータ)を決定する
+        void    determine_body_size(const HeaderHTTPHolder& holder);
     };
 
 private:
@@ -72,15 +87,11 @@ private:
 
 
     // 確定した情報
-    HTTP::t_method                  http_method;
-    byte_string                     request_path;
-    HTTP::t_version                 http_version;
-    // -1 は未指定をあらわす
-    size_t                          content_length;
+    // 制御パラメータ
+    ControlParams                   cp;
 
     // [HTTPヘッダ]
     HeaderHTTPHolder                header_holder;
-    byte_string                     header_host;
 
     // [パース関数群]
 

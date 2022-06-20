@@ -126,16 +126,40 @@ std::vector< ParserHelper::byte_string >  ParserHelper::split_by_sp(
     return rv;
 }
 
+std::vector< HTTP::light_string >   ParserHelper::split(
+    const HTTP::light_string& lstr,
+    const byte_string& charset
+) {
+    unsigned char filter[256];
+    HTTP::Charset::fill_charset(filter, sizeof(filter), charset);
+    std::vector< HTTP::light_string > rv;
+    HTTP::light_string::size_type word_from = 0;
+    HTTP::light_string::size_type word_to = 0;
+    bool prev_is_sp = true;
+    for (HTTP::light_string::size_type i = 0; i <= lstr.size(); ++i) {
+        if (i == lstr.size() || filter[(unsigned char)lstr[i] % 256]) {
+            word_to = i;
+            if (prev_is_sp) {
+                word_from = i;
+            }
+            DSOUT() << "substr(" << word_from << ", " << word_to - word_from << ")" << std::endl;
+            rv.push_back(lstr.substr(word_from, word_to - word_from));
+            prev_is_sp = true;
+        } else {
+            if (prev_is_sp) {
+                word_from = i;
+            }
+            prev_is_sp = false;
+        }
+    }
+    return rv;
+}
+
+
 void    ParserHelper::normalize_header_key(byte_string& key) {
     for (byte_string::iterator it = key.begin(); it != key.end(); it++) {
         *it = tolower(*it);
     }
-}
-
-
-bool    ParserHelper::is_listing_header(const byte_string& key) {
-    if (key == "set-cookie") { return true; }
-    return false;
 }
 
 unsigned int    ParserHelper::stou(const byte_string& str) {
@@ -150,6 +174,10 @@ unsigned int    ParserHelper::stou(const byte_string& str) {
         throw std::runtime_error("failed to convert string to int");
     }
     return v;
+}
+
+unsigned int    ParserHelper::stou(const HTTP::light_string& str) {
+    return stou(str.str());
 }
 
 ParserHelper::byte_string   ParserHelper::utos(unsigned int u) {

@@ -5,6 +5,7 @@
 # include "http.hpp"
 # include "http_error.hpp"
 # include "parserhelper.hpp"
+# include "HeaderHTTP.hpp"
 
 // [HTTPレスポンスクラス]
 // [責務]

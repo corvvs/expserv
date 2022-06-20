@@ -7,6 +7,10 @@
 // TODO: この辺レギュレーション的に使えないので注意
 # define DSOUT() debug_out(__FILE__, __LINE__, __func__)
 # define DOUT()  debug_err(__FILE__, __LINE__, __func__)
+# define DXOUT(expr) (debug_out(__FILE__, __LINE__, __func__) << expr << std::endl)
+# define DXERR(expr) (debug_err(__FILE__, __LINE__, __func__) << expr << std::endl)
+// # define DXOUT(expr) ((void)0)
+
 
 std::ostream&   debug_out(
     const char *filename,

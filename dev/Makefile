@@ -10,7 +10,8 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					requesthttp.cpp\
 					responsehttp.cpp\
 					parserhelper.cpp\
-					HeaderHTTPItem.cpp\
+					HeaderHTTP.cpp\
+					ValidatorHTTP.cpp\
 					IndexRange.cpp\
 					time.cpp\
 					http_error.cpp\

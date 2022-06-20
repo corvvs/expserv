@@ -5,6 +5,8 @@
 # include <utility>
 # include <sstream>
 # include "http.hpp"
+# include "lightstring.hpp"
+# include "ValidatorHTTP.hpp"
 # include "test_common.hpp"
 # include "IndexRange.hpp"
 
@@ -40,18 +42,21 @@ namespace ParserHelper {
     ssize_t     ignore_not_sp(const byte_string& str, ssize_t from, ssize_t len);
 
     // 文字列を「空白」で分割する
-    std::vector< byte_string >  split_by_sp(
+    std::vector< byte_string >          split_by_sp(
         byte_string::const_iterator first,
         byte_string::const_iterator last
     );
 
-    void        normalize_header_key(byte_string& key);
+    std::vector< HTTP::light_string >   split(
+        const HTTP::light_string& lstr,
+        const byte_string& charset
+    );
 
-    // predicate: HTTPヘッダ key が「リスト」かどうかを返す
-    bool        is_listing_header(const byte_string& key);
+    void        normalize_header_key(byte_string& key);
 
     // string to size_t 変換
     unsigned int    stou(const byte_string& str);
+    unsigned int    stou(const HTTP::light_string& str);
     byte_string     utos(unsigned int u);
 }
 

@@ -45,11 +45,11 @@ void    ResponseHTTP::render() {
         HTTP::reason(status_) + ParserHelper::CRLF;
     // content-length がない場合, かつbodyをもつメソッドの場合(TODO),
     // bodyのサイズをcontent-lengthとして出力
-    if (header_dict.find("content-length") == header_dict.end()) {
+    if (header_dict.find(HeaderHTTP::content_length) == header_dict.end()) {
         header_list.insert(
             header_list.begin(),
             HTTP::header_kvpair_type(
-                "content-length",
+                HeaderHTTP::content_length,
                 ParserHelper::utos(body.length())
             )
         );
