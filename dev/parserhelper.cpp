@@ -130,14 +130,13 @@ std::vector< HTTP::light_string >   ParserHelper::split(
     const HTTP::light_string& lstr,
     const byte_string& charset
 ) {
-    unsigned char filter[256];
-    HTTP::Charset::fill_charset(filter, sizeof(filter), charset);
+    HTTP::CharFilter filter(charset);
     std::vector< HTTP::light_string > rv;
     HTTP::light_string::size_type word_from = 0;
     HTTP::light_string::size_type word_to = 0;
     bool prev_is_sp = true;
     for (HTTP::light_string::size_type i = 0; i <= lstr.size(); ++i) {
-        if (i == lstr.size() || filter[(unsigned char)lstr[i] % 256]) {
+        if (i == lstr.size() || filter.includes(lstr[i])) {
             word_to = i;
             if (prev_is_sp) {
                 word_from = i;

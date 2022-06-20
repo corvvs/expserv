@@ -128,12 +128,11 @@ public:
         if (pos >= d) {
             return npos;
         }
-        unsigned char filter[256];
-        HTTP::Charset::fill_charset(filter, sizeof(filter), str);
+        HTTP::CharFilter   filter(str);
         DSOUT() << first + pos << ", " << last << std::endl;
         for (typename string_class::size_type i = last; first + pos < i;) {
             --i;
-            if (filter[(unsigned char)base[i] % 256]) {
+            if (filter.includes(base[i])) {
                 return i - first;
             }
         }

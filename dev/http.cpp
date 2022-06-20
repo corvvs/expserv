@@ -45,3 +45,73 @@ const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
             return "";
     }
 }
+
+HTTP::CharFilter::CharFilter(const byte_string& chars) {
+    fill(chars);
+}
+
+HTTP::CharFilter::CharFilter(const char *chars) {
+    fill(byte_string(chars));
+}
+
+HTTP::CharFilter::CharFilter(const CharFilter& other) {
+    *this = other;
+}
+
+HTTP::CharFilter& HTTP::CharFilter::operator=(const CharFilter& rhs) {
+    if (this != &rhs) {
+        memcpy(filter, rhs.filter, sizeof(uint64_t) * 4);
+    }
+    return *this;
+}
+
+HTTP::CharFilter& HTTP::CharFilter::operator=(const byte_string& rhs) {
+    fill(rhs);
+    return *this;
+}
+
+HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter& rhs) const {
+    CharFilter n(*this);
+    for (int i = 0; i < 4; ++i) {
+        n.filter[i] |= rhs.filter[i];
+    }
+    return n;
+}
+
+HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter& rhs) const {
+    CharFilter n(*this);
+    for (int i = 0; i < 4; ++i) {
+        n.filter[i] &= rhs.filter[i];
+    }
+    return n;
+}
+
+HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter& rhs) const {
+    CharFilter n(*this);
+    for (int i = 0; i < 4; ++i) {
+        n.filter[i] ^= rhs.filter[i];
+    }
+    return n;
+}
+
+void HTTP::CharFilter::fill(const byte_string& chars) {
+    memset(filter, 0, sizeof(uint64_t) * 4);
+    // 6 の出どころは 2^6 = 64.
+    for (byte_string::size_type i = 0; i < chars.size(); ++i) {
+        uint8_t c = chars[i];
+        filter[(c >> 6)] |= 1 << (c & ((1u << 6) - 1));
+    }
+}
+
+bool HTTP::CharFilter::includes(uint8_t c) const {
+    return (filter[(c >> 6)] & (1 << (c & ((1u << 6) - 1))));
+}
+
+const HTTP::CharFilter HTTP::CharFilter::alpha_low  = HTTP::Charset::alpha_low;
+const HTTP::CharFilter HTTP::CharFilter::alpha_up   = HTTP::Charset::alpha_up;
+const HTTP::CharFilter HTTP::CharFilter::alpha      = HTTP::Charset::alpha;
+const HTTP::CharFilter HTTP::CharFilter::digit      = HTTP::Charset::digit;
+const HTTP::CharFilter HTTP::CharFilter::hexdig     = HTTP::Charset::hexdig;
+const HTTP::CharFilter HTTP::CharFilter::unreserved = HTTP::Charset::unreserved;
+const HTTP::CharFilter HTTP::CharFilter::gen_delims = HTTP::Charset::gen_delims;
+const HTTP::CharFilter HTTP::CharFilter::sub_delims = HTTP::Charset::sub_delims;

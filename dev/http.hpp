@@ -68,29 +68,64 @@ namespace HTTP {
     // サーバのデフォルトのHTTPバージョン
     const t_version     DEFAULT_HTTP_VERSION = V_1_1;
 
-    const byte_string   version_str(HTTP::t_version version);
-    const byte_string   reason(HTTP::t_status status);
+    const byte_string   version_str(t_version version);
+    const byte_string   reason(t_status status);
 
     // 文字集合
     namespace Charset {
-        // アルファベット・小文字
-        const HTTP::byte_string alpha_low = "abcdefghijklmnopqrstuvwxyz";
-        // アルファベット・大文字
-        const HTTP::byte_string alpha_up = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        // アルファベット
-        const HTTP::byte_string alpha = alpha_low + alpha_up;
-        // 数字
-        const HTTP::byte_string digit = "0123456789";
-        // 16進数における数字
-        const HTTP::byte_string hexdig = digit + "abcdef" + "ABCDEF";
-        // HTTPにおける非予約文字
-        const HTTP::byte_string unreserved = alpha + digit + "-._~";
-        const HTTP::byte_string gen_delims = ":/?#[]@";
-        const HTTP::byte_string sub_delims = "!$&'()*+.;=";
 
-        // 文字フィルターバッファ filter を charset で初期化する
-        void    fill_charset(unsigned char *filter, size_t n, const HTTP::byte_string& charset);
+        // アルファベット・小文字
+        const byte_string alpha_low = "abcdefghijklmnopqrstuvwxyz";
+        // アルファベット・大文字
+        const byte_string alpha_up = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        // アルファベット
+        const byte_string alpha = alpha_low + alpha_up;
+        // 数字
+        const byte_string digit = "0123456789";
+        // 16進数における数字
+        const byte_string hexdig = digit + "abcdef" + "ABCDEF";
+        // HTTPにおける非予約文字
+        const byte_string unreserved = alpha + digit + "-._~";
+        const byte_string gen_delims = ":/?#[]@";
+        const byte_string sub_delims = "!$&'()*+.;=";
     }
+
+    // 単純な文字集合クラス
+    class CharFilter {
+    private:
+        uint64_t    filter[4];
+
+    public:
+        CharFilter(const byte_string& chars);
+        CharFilter(const char* chars);
+        CharFilter(const CharFilter& other);
+
+        CharFilter& operator=(const CharFilter& rhs);
+        CharFilter& operator=(const byte_string& rhs);
+
+        CharFilter  operator|(const CharFilter& rhs) const;
+        CharFilter  operator&(const CharFilter& rhs) const;
+        CharFilter  operator^(const CharFilter& rhs) const;
+
+        void        fill(const byte_string& chars);
+        // `c` が文字集合に含まれるかどうか
+        bool        includes(uint8_t c) const;
+
+        // アルファベット・小文字
+        static const CharFilter alpha_low;
+        // アルファベット・大文字
+        static const CharFilter alpha_up;
+        // アルファベット
+        static const CharFilter alpha;
+        // 数字
+        static const CharFilter digit;
+        // 16進数における数字
+        static const CharFilter hexdig;
+        // HTTPにおける非予約文字
+        static const CharFilter unreserved;
+        static const CharFilter gen_delims;
+        static const CharFilter sub_delims;
+    };
 }
 
 #endif

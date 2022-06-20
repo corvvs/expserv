@@ -116,16 +116,14 @@ bool    HTTP::Validator::is_ipvfuture(const light_string& str) {
     if (str.size() < 3) { return false; }
     if (str[0] != 'v') { return false; }
     light_string::size_type i = 1;
-    unsigned char filter[256];
-    Charset::fill_charset(filter, sizeof(filter), Charset::hexdig);
     for (;i < str.size(); ++i) {
-        if (!filter[(unsigned char)str[i]]) { break; }
+        if (!CharFilter::hexdig.includes(str[i])) { break; }
     }
     if (i < 2) { return false; }
     const light_string::size_type ihex = i;
-    Charset::fill_charset(filter, sizeof(filter), Charset::unreserved + Charset::sub_delims + ":");
+    CharFilter filter_others = CharFilter::unreserved | CharFilter::sub_delims | ":";
     for (;i < str.size(); ++i) {
-        if (!filter[(unsigned char)str[i]]) { break; }
+        if (!filter_others.includes(str[i])) { break; }
     }
     if (i <= ihex) { return false; }
     if (i != str.size()) { return false; }
@@ -175,22 +173,20 @@ bool    HTTP::Validator::is_reg_name(const light_string& str) {
     // pct-encoded   = "%" HEXDIG HEXDIG
     // sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
     //              / "*" / "+" / "," / ";" / "="
-    unsigned char filter[256];
-    Charset::fill_charset(filter, sizeof(filter), Charset::unreserved + Charset::sub_delims);
-    unsigned char filter_hexdig[256];
-    Charset::fill_charset(filter_hexdig, sizeof(filter_hexdig), Charset::hexdig);
+    const CharFilter& hexdig = CharFilter::hexdig;
+    const CharFilter filter_others = CharFilter::unreserved | CharFilter::sub_delims | ":";
     for (light_string::size_type i = 0; i < str.length();) {
-        if (filter[(unsigned char)str[i]]) {
+        if (filter_others.includes(str[i])) {
             // unreserved or sub-delims
             i += 1;
             continue;
         } else if (str[i] == '%') {
-            if (i + 2 < str.length() && filter_hexdig[(unsigned char)str[i + 1]] && filter_hexdig[(unsigned char)str[i + 2]]) {
+            if (i + 2 < str.length() && hexdig.includes(str[i + 1]) && hexdig.includes(str[i + 2])) {
                 i += 3;
                 continue;
             }
         }
-        DSOUT() << "unexpected char detected: '" << str[i] << "'" << std::endl;
+        DXOUT("unexpected char detected: '" << str[i] << "'");
         return false;
     }
     return true;
@@ -214,11 +210,4 @@ bool    HTTP::Validator::is_ls32(const light_string& str) {
     light_string::size_type sep = str.find_first_of(":");
     if (sep == light_string::npos) { return false; }
     return is_h16(str.substr(0, sep)) && is_h16(str.substr(sep + 1));
-}
-
-void    HTTP::Charset::fill_charset(unsigned char *filter, size_t n, const byte_string& charset) {
-    memset(filter, 0, n);
-    for (byte_string::size_type i = 0; i < charset.size(); ++i) {
-        filter[(unsigned char)charset[i] % 256] = 1;
-    }
 }
