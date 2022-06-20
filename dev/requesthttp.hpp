@@ -66,6 +66,7 @@ public:
         void    determine_host(const HeaderHTTPHolder& holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
         void    determine_body_size(const HeaderHTTPHolder& holder);
+        void    determine_content_type(const HeaderHTTPHolder& holder);
     };
 
 private:

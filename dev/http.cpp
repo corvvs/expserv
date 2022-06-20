@@ -108,6 +108,36 @@ bool HTTP::CharFilter::includes(uint8_t c) const {
     return x;
 }
 
+// 0x5555..
+// 0x5  = 0b0101
+// 0x55 = 0b01010101
+// 0xa  = 0b1010
+// 0xaa = 0b10101010
+
+// uint8_t x;
+// x & 0x55 = x & 0b01010101 -> x の偶数ビットのみ残す
+// x & 0xaa = x & 0b10101010 -> x の奇数ビットのみ残す
+// (x & 0xaa) >> 1 -> x の奇数ビットを偶数ビットにずらす
+// (x & 0x55) + ((x & 0xaa) >> 1) -> xの"隣り合うビット" [0,1] [2,3] [4,5] [6,7] の和
+
+// x = 167         = 0b 10 10 01 11
+// (x & 0x55)      = 0b 00 00 01 01
+// (x & 0xaa)      = 0b 10 10 00 10
+// (x & 0xaa) >> 1 = 0b 01 01 00 01
+// (x & 0x55) + ((x & 0xaa) >> 1)
+//                 = 0b 01 01 01 10 = y (popcount in 2bit)
+
+// 0x33            = 0b 00 11 00 11
+// 0xcc            = 0b 11 00 11 00
+// (y & 0x33)      = 0b 00 01 00 10
+// (y & 0xcc)      = 0b 01 00 01 00
+// (y & 0xcc) >> 2 = 0b 00 01 00 01
+// (y & 0x33) + ((y & 0xcc) >> 2)
+//                 = 0b 00 10 00 11 = z (popcount in 4bit)
+
+// 0x0f            = 0b 00 00 11 11
+// 0xf0            = 0b 11 11 00 00
+
 HTTP::byte_string::size_type HTTP::CharFilter::size() const {
     byte_string::size_type n = 0;
     for (int i = 0; i < 4; ++i) {
@@ -125,6 +155,7 @@ HTTP::byte_string::size_type HTTP::CharFilter::size() const {
 
 HTTP::byte_string   HTTP::CharFilter::str() const {
     HTTP::byte_string   out;
+    out.reserve(size());
     for (unsigned int i = 0; i < 4 * 8 * sizeof(uint64_t); ++i) {
         uint8_t c = i;
         if (includes(c)) { out.push_back(c); }
@@ -136,7 +167,6 @@ std::ostream&   operator<<(std::ostream& ost, const HTTP::CharFilter& f) {
     return ost << "(" << f.size() << "):[" << f.str() << "]";
 }
 
-
 const HTTP::CharFilter HTTP::CharFilter::alpha_low  = HTTP::Charset::alpha_low;
 const HTTP::CharFilter HTTP::CharFilter::alpha_up   = HTTP::Charset::alpha_up;
 const HTTP::CharFilter HTTP::CharFilter::alpha      = HTTP::Charset::alpha;
@@ -145,3 +175,4 @@ const HTTP::CharFilter HTTP::CharFilter::hexdig     = HTTP::Charset::hexdig;
 const HTTP::CharFilter HTTP::CharFilter::unreserved = HTTP::Charset::unreserved;
 const HTTP::CharFilter HTTP::CharFilter::gen_delims = HTTP::Charset::gen_delims;
 const HTTP::CharFilter HTTP::CharFilter::sub_delims = HTTP::Charset::sub_delims;
+const HTTP::CharFilter HTTP::CharFilter::tchar      = HTTP::Charset::tchar;

@@ -294,18 +294,7 @@ void    RequestHTTP::extract_control_headers() {
     // [bodyの長さ]
     cp.determine_body_size(header_holder);
 
-    // [Content-Type]
-    {
-        // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type header field is not present, the recipient MAY either assume a media type of "application/octet-stream" ([RFC2046], Section 4.5.1) or examine the data to determine its type.
-        const byte_string *ct = header_holder.get_val(HeaderHTTP::content_type);
-        if (!ct || *ct == "") {
-            cp.content_type = "applciation/octet-stream";
-            DSOUT() << "Content-Type -> \"" << cp.content_type << "\"" << std::endl;
-        } else {
-            cp.content_type = *ct;
-            DSOUT() << "Content-Type: \"" << *ct << "\"" << std::endl;
-        }
-    }
+    cp.determine_content_type(header_holder);
 }
 
 void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holder) {
@@ -336,7 +325,7 @@ void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& 
     if (transfer_encodings && transfer_encodings->back() == "chunked") {
         // メッセージのヘッダにTransfer-Encodingが存在し, かつ一番最後のcodingがchunkedである場合
         // -> chunkによって長さが決まる
-        DSOUT() << "by chunk" << std::endl;
+        DXOUT("by chunk");
         return;
     }
 
@@ -349,14 +338,57 @@ void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& 
         if (cl) {
             body_size = ParserHelper::stou(*cl);
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
-            DSOUT() << "body_size = " << body_size << std::endl;
+            DXOUT("body_size = " << body_size);
             return;
         }
     }
 
     // ボディの長さは0.
     body_size = 0;
-    DSOUT() << "body_size is zero." << std::endl;
+    DXOUT("body_size is zero.");
+}
+
+void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder& holder) {
+    // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type header field is not present, the recipient MAY either assume a media type of "application/octet-stream" ([RFC2046], Section 4.5.1) or examine the data to determine its type.
+    //
+    // Content-Type = media-type
+    // media-type = type "/" subtype *( OWS ";" OWS parameter )
+    // type       = token
+    // subtype    = token
+    // token      = 1*tchar
+    // parameter  = token "=" ( token / quoted-string )
+
+    const byte_string *ct = holder.get_val(HeaderHTTP::content_type);
+    if (!ct || *ct == "") {
+        content_type = "applciation/octet-stream";
+        DXOUT("Content-Type -> \"" << content_type << "\"");
+        return;
+    }
+    const light_string lct(*ct);
+    light_string::size_type type_end = lct.find_first_not_of(HTTP::Charset::tchar);
+    if (type_end == light_string::npos) {
+        DXOUT("[KO] no /: \"" << lct << "\"");
+        return;
+    }
+    if (lct[type_end] != '/') {
+        DXOUT("[KO] not separated by /: \"" << lct << "\"");
+        return;
+    }
+    light_string    type_str(lct, 0, type_end);
+    light_string::size_type subtype_end = lct.find_first_not_of(HTTP::Charset::tchar, type_end + 1);
+    DXOUT(type_end + 1 << ", " << subtype_end);
+    light_string    subtype_str(lct, type_end + 1, subtype_end);
+    if (subtype_str.size() == 0) {
+        DXOUT("[KO] no subtype after /: \"" << lct << "\"");
+        return;
+    }
+
+    if (subtype_end == light_string::npos) {
+        return;
+    }
+    // parameters があるかも？
+    DXOUT("parameters?");
+    // TODO: コロン区切りリストを分解する
 }
 
 bool    RequestHTTP::is_ready_to_navigate() const {

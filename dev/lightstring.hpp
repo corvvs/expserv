@@ -23,8 +23,14 @@ public:
 
 private:
 
+    // 参照先string
     const string_class& base;
+    // `base`のこのオブジェクトが参照している部分の最初のインデックス
+    // first <= last が成り立つ
     size_type           first;
+    // `base`のこのオブジェクトが参照している部分の最後のインデックス + 1
+    // first <= last が成り立つ
+    // last <= base.size() が成り立つ
     size_type           last;
 
 public:
@@ -34,19 +40,29 @@ public:
     }
 
     LightString(const string_class& str):
-        base(str), first(0), last(str.length()) {}
+        base(str),
+        first(0),
+        last(str.length()) {}
 
     LightString(const string_class& str, const_iterator f, const_iterator l):
-        base(str), first(std::distance(str.begin(), f)), last(std::distance(str.begin(), l)) {}
+        base(str),
+        first(std::distance(str.begin(), f)),
+        last(std::max(first, std::min(str.size(), (size_type)std::distance(str.begin(), l)))) {}
 
-    LightString(const string_class& str, size_type fi, size_type li):
-        base(str), first(fi), last(li) {}
+    LightString(const string_class& str, size_type fi, size_type li = npos):
+        base(str),
+        first(fi),
+        last(std::max(first, std::min(str.size(), li))) {}
 
     LightString(const string_class& str, const IndexRange& range):
-        base(str), first(range.first), last(range.second) {}
+        base(str),
+        first(range.first),
+        last(std::max(first, std::min(str.size(), range.second))) {}
 
-    LightString(const LightString& lstr, size_type fi, size_type li):
-        base(lstr.base), first(lstr.first + fi), last(lstr.first + li) {}
+    LightString(const LightString& lstr, size_type fi, size_type li = npos):
+        base(lstr.base),
+        first(lstr.first + fi),
+        last(std::max(first, lstr.first + std::min(lstr.size(), li))) {}
 
     LightString& operator=(const LightString& rhs) {
         const_cast<string_class&>(base) = rhs.base;
@@ -150,9 +166,9 @@ public:
         if (first == last) {
             return npos;
         }
-        for (const_iterator it = begin(); it != end(); ++it) {
-            if (str.find_first_of(*it) == std::string::npos) {
-                return std::distance(begin(), it);
+        for (size_type i = pos; i < size(); ++i) {
+            if (str.find_first_of(operator[](i)) == std::string::npos) {
+                return i;
             }
         }
         return npos;
@@ -169,9 +185,10 @@ public:
         if (first == last) {
             return npos;
         }
-        for (const_iterator it = end(); --it != begin();) {
-            if (str.find_first_of(*it) == std::string::npos) {
-                return std::distance(begin(), it);
+        for (size_type i = size(); 0 + pos < i;) {
+            --i;
+            if (str.find_first_of(operator[](i)) == std::string::npos) {
+                return i;
             }
         }
         return npos;
@@ -221,6 +238,59 @@ public:
         DSOUT() << "n = " << n << std::endl;
         DSOUT() << pos << ", " << pos + rlen << std::endl;
         return LightString(base, begin() + pos, begin() + pos + rlen);
+    }
+
+    std::vector<LightString>    split(const string_class& charset) const {
+        HTTP::CharFilter            filter(charset);
+        std::vector<LightString>    rv;
+        size_type word_from = 0;
+        size_type word_to = 0;
+        bool prev_is_sp = true;
+        for (size_type i = 0; i <= size(); ++i) {
+            if (i == size() || filter.includes(operator[](i))) {
+                word_to = i;
+                if (prev_is_sp) {
+                    word_from = i;
+                }
+                DXOUT("substr(" << word_from << ", " << word_to - word_from << ")");
+                rv.push_back(substr(word_from, word_to - word_from));
+                prev_is_sp = true;
+            } else {
+                if (prev_is_sp) {
+                    word_from = i;
+                }
+                prev_is_sp = false;
+            }
+        }
+        return rv;
+    }
+
+    LightString ltrim(const string_class& charset) const {
+        size_type first = find_first_not_of(charset);
+        if (first == npos) {
+            return LightString(*this, 0, 0);
+        } else {
+            return LightString(*this, first, size());
+        }
+    }
+
+    LightString rtrim(const string_class& charset) const {
+        size_type last = find_last_not_of(charset);
+        if (last == npos) {
+            return LightString(*this, 0, 0);
+        } else {
+            return LightString(*this, 0, last + 1);
+        }
+    }
+
+    LightString trim(const string_class& charset) const {
+        size_type first = find_first_not_of(charset);
+        size_type last = find_last_not_of(charset);
+        if (last == npos) {
+            return LightString(*this, 0, 0);
+        } else {
+            return LightString(*this, first, last + 1);
+        }
     }
 };
 

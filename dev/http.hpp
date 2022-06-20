@@ -90,6 +90,14 @@ namespace HTTP {
         const byte_string unreserved = alpha + digit + "-._~";
         const byte_string gen_delims = ":/?#[]@";
         const byte_string sub_delims = "!$&'()*+.;=";
+        // token 構成文字
+        // 空白, ":", ";", "/", "@", "?" を含まない.
+        // ".", "&" は含む.
+        const byte_string tchar = alpha + digit + "!#$%&'*+-.^_`|~";
+        const byte_string sp = " ";
+        const byte_string ws = " \t";
+        const byte_string crlf = "\r\n";
+        const byte_string lf = "\n";
     }
 
     // 単純な文字集合クラス
@@ -105,10 +113,14 @@ namespace HTTP {
         CharFilter& operator=(const CharFilter& rhs);
         CharFilter& operator=(const byte_string& rhs);
 
+        // set union
         CharFilter  operator|(const CharFilter& rhs) const;
+        // set intersection
         CharFilter  operator&(const CharFilter& rhs) const;
+        // set symmetric difference
         CharFilter  operator^(const CharFilter& rhs) const;
 
+        // 文字集合を文字列`chars`を使って初期化する
         void        fill(const byte_string& chars);
         // `c` が文字集合に含まれるかどうか
         bool        includes(uint8_t c) const;
@@ -129,6 +141,7 @@ namespace HTTP {
         static const CharFilter unreserved;
         static const CharFilter gen_delims;
         static const CharFilter sub_delims;
+        static const CharFilter tchar;
 
         byte_string str() const;
     };
