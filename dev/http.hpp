@@ -1,7 +1,9 @@
 #ifndef HTTP_HPP
 # define HTTP_HPP
+# include <iostream>
 # include <string>
 # include <map>
+# include "test_common.hpp"
 
 // 全体で共通して使うenum, 型, 定数, フリー関数など
 
@@ -110,6 +112,8 @@ namespace HTTP {
         void        fill(const byte_string& chars);
         // `c` が文字集合に含まれるかどうか
         bool        includes(uint8_t c) const;
+        // 文字集合のサイズ
+        byte_string::size_type  size() const;
 
         // アルファベット・小文字
         static const CharFilter alpha_low;
@@ -125,7 +129,11 @@ namespace HTTP {
         static const CharFilter unreserved;
         static const CharFilter gen_delims;
         static const CharFilter sub_delims;
+
+        byte_string str() const;
     };
 }
+
+std::ostream&   operator<<(std::ostream& ost, const HTTP::CharFilter& f);
 
 #endif
