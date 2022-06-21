@@ -1,5 +1,41 @@
 #include "http.hpp"
 
+
+const HTTP::t_version   HTTP::DEFAULT_HTTP_VERSION = V_1_1;
+
+
+// アルファベット・小文字
+const HTTP::byte_string HTTP::Charset::alpha_low    = "abcdefghijklmnopqrstuvwxyz";
+// アルファベット・大文字
+const HTTP::byte_string HTTP::Charset::alpha_up     = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+// アルファベット
+const HTTP::byte_string HTTP::Charset::alpha        = alpha_low + alpha_up;
+// 数字
+const HTTP::byte_string HTTP::Charset::digit        = "0123456789";
+// 16進数における数字
+const HTTP::byte_string HTTP::Charset::hexdig       = digit + "abcdef" + "ABCDEF";
+// HTTPにおける非予約文字
+const HTTP::byte_string HTTP::Charset::unreserved   = alpha + digit + "-._~";
+const HTTP::byte_string HTTP::Charset::gen_delims   = ":/?#[]@";
+const HTTP::byte_string HTTP::Charset::sub_delims   = "!$&'()*+.;=";
+// token 構成文字
+// 空白, ":", ";", "/", "@", "?" を含まない.
+// ".", "&" は含む.
+const HTTP::byte_string HTTP::Charset::tchar        = alpha + digit + "!#$%&'*+-.^_`|~";
+const HTTP::byte_string HTTP::Charset::sp           = " ";
+const HTTP::byte_string HTTP::Charset::ws           = " \t";
+const HTTP::byte_string HTTP::Charset::crlf         = "\r\n";
+const HTTP::byte_string HTTP::Charset::lf           = "\n";
+
+// parameter      = token "=" ( token / quoted-string )
+// quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+// qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+//                ;               !     #-[        ]-~
+//                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
+// obs-text       = %x80-FF ; extended ASCII
+// quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+
+
 const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
     switch (version) {
         case V_0_9:
@@ -54,6 +90,10 @@ HTTP::CharFilter::CharFilter(const char *chars) {
     fill(byte_string(chars));
 }
 
+HTTP::CharFilter::CharFilter(uint8_t from, uint8_t to) {
+    fill(from, to);
+}
+
 HTTP::CharFilter::CharFilter(const CharFilter& other) {
     *this = other;
 }
@@ -94,12 +134,33 @@ HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter& rhs) const {
     return n;
 }
 
+HTTP::CharFilter HTTP::CharFilter::operator~() const {
+    CharFilter n(*this);
+    for (int i = 0; i < 4; ++i) {
+        n.filter[i] = ~n.filter[i];
+    }
+    return n;
+}
+
+HTTP::CharFilter HTTP::CharFilter::operator-(const CharFilter& rhs) const {
+    return *this & ~rhs;
+}
+
 void HTTP::CharFilter::fill(const byte_string& chars) {
     memset(filter, 0, sizeof(uint64_t) * 4);
     // 6 の出どころは 2^6 = 64.
     for (byte_string::size_type i = 0; i < chars.size(); ++i) {
         uint8_t c = chars[i];
         filter[(c >> 6)] |= (uint64_t)1 << (c & (((uint64_t)1 << 6) - 1));
+    }
+}
+
+void HTTP::CharFilter::fill(uint8_t from, uint8_t to) {
+    memset(filter, 0, sizeof(uint64_t) * 4);
+    for (; from <= to; ++from) {
+        uint8_t c = from;
+        filter[(c >> 6)] |= (uint64_t)1 << (c & (((uint64_t)1 << 6) - 1));
+        if (from == to) { break; }
     }
 }
 
@@ -137,6 +198,11 @@ bool HTTP::CharFilter::includes(uint8_t c) const {
 
 // 0x0f            = 0b 00 00 11 11
 // 0xf0            = 0b 11 11 00 00
+
+// 0x5555 = 0b0101010101010101 0xaaaa = 0b1010101010101010 1
+// 0x3333 = 0b0011001100110011 0xcccc = 0b1100110011001100 2
+// 0x0f0f = 0b0000111100001111 0xf0f0 = 0b1111000011110000 4
+// 0x00ff = 0b0000000011111111 0xff00 = 0b1111111100000000 8
 
 HTTP::byte_string::size_type HTTP::CharFilter::size() const {
     byte_string::size_type n = 0;
@@ -176,3 +242,23 @@ const HTTP::CharFilter HTTP::CharFilter::unreserved = HTTP::Charset::unreserved;
 const HTTP::CharFilter HTTP::CharFilter::gen_delims = HTTP::Charset::gen_delims;
 const HTTP::CharFilter HTTP::CharFilter::sub_delims = HTTP::Charset::sub_delims;
 const HTTP::CharFilter HTTP::CharFilter::tchar      = HTTP::Charset::tchar;
+const HTTP::CharFilter HTTP::CharFilter::sp         = HTTP::Charset::sp;
+const HTTP::CharFilter HTTP::CharFilter::ws         = HTTP::Charset::ws;
+const HTTP::CharFilter HTTP::CharFilter::crlf       = HTTP::Charset::crlf;
+const HTTP::CharFilter HTTP::CharFilter::cr         = "\r";
+const HTTP::CharFilter HTTP::CharFilter::lf         = HTTP::Charset::lf;
+const HTTP::CharFilter HTTP::CharFilter::htab       = "\t";
+const HTTP::CharFilter HTTP::CharFilter::dquote     = "\"";
+const HTTP::CharFilter HTTP::CharFilter::bslash     = "\\";
+const HTTP::CharFilter HTTP::CharFilter::obs_text   = HTTP::CharFilter(0x80, 0xff);
+const HTTP::CharFilter HTTP::CharFilter::vchar      = HTTP::CharFilter(0x21, 0x7e);
+const HTTP::CharFilter HTTP::CharFilter::qdtext     = HTTP::CharFilter::vchar | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text - "\"\\";
+const HTTP::CharFilter HTTP::CharFilter::quoted_right = HTTP::CharFilter::vchar | " \t" | HTTP::CharFilter::obs_text;
+
+// parameter      = token "=" ( token / quoted-string )
+// quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+// qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+//                ;               !     #-[        ]-~
+//                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
+// obs-text       = %x80-FF ; extended ASCII
+// quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )

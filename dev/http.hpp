@@ -68,8 +68,7 @@ namespace HTTP {
                                             header_dict_type;
 
     // サーバのデフォルトのHTTPバージョン
-    const t_version     DEFAULT_HTTP_VERSION = V_1_1;
-
+    extern const t_version     DEFAULT_HTTP_VERSION;
     const byte_string   version_str(t_version version);
     const byte_string   reason(t_status status);
 
@@ -77,27 +76,27 @@ namespace HTTP {
     namespace Charset {
 
         // アルファベット・小文字
-        const byte_string alpha_low = "abcdefghijklmnopqrstuvwxyz";
+        extern const byte_string alpha_low;
         // アルファベット・大文字
-        const byte_string alpha_up = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        extern const byte_string alpha_up;
         // アルファベット
-        const byte_string alpha = alpha_low + alpha_up;
+        extern const byte_string alpha;
         // 数字
-        const byte_string digit = "0123456789";
+        extern const byte_string digit;
         // 16進数における数字
-        const byte_string hexdig = digit + "abcdef" + "ABCDEF";
+        extern const byte_string hexdig;
         // HTTPにおける非予約文字
-        const byte_string unreserved = alpha + digit + "-._~";
-        const byte_string gen_delims = ":/?#[]@";
-        const byte_string sub_delims = "!$&'()*+.;=";
+        extern const byte_string unreserved;
+        extern const byte_string gen_delims;
+        extern const byte_string sub_delims;
         // token 構成文字
         // 空白, ":", ";", "/", "@", "?" を含まない.
         // ".", "&" は含む.
-        const byte_string tchar = alpha + digit + "!#$%&'*+-.^_`|~";
-        const byte_string sp = " ";
-        const byte_string ws = " \t";
-        const byte_string crlf = "\r\n";
-        const byte_string lf = "\n";
+        extern const byte_string tchar;
+        extern const byte_string sp;
+        extern const byte_string ws;
+        extern const byte_string crlf;
+        extern const byte_string lf;
     }
 
     // 単純な文字集合クラス
@@ -109,6 +108,8 @@ namespace HTTP {
         CharFilter(const byte_string& chars);
         CharFilter(const char* chars);
         CharFilter(const CharFilter& other);
+        // by exclusive char-range
+        CharFilter(uint8_t from, uint8_t to);
 
         CharFilter& operator=(const CharFilter& rhs);
         CharFilter& operator=(const byte_string& rhs);
@@ -119,9 +120,13 @@ namespace HTTP {
         CharFilter  operator&(const CharFilter& rhs) const;
         // set symmetric difference
         CharFilter  operator^(const CharFilter& rhs) const;
+        // set complement
+        CharFilter  operator~() const;
+        CharFilter  operator-(const CharFilter& rhs) const;
 
         // 文字集合を文字列`chars`を使って初期化する
         void        fill(const byte_string& chars);
+        void        fill(uint8_t from, uint8_t to);
         // `c` が文字集合に含まれるかどうか
         bool        includes(uint8_t c) const;
         // 文字集合のサイズ
@@ -142,6 +147,18 @@ namespace HTTP {
         static const CharFilter gen_delims;
         static const CharFilter sub_delims;
         static const CharFilter tchar;
+        static const CharFilter sp;
+        static const CharFilter ws;
+        static const CharFilter crlf;
+        static const CharFilter cr;
+        static const CharFilter lf;
+        static const CharFilter htab;
+        static const CharFilter dquote;
+        static const CharFilter bslash;
+        static const CharFilter obs_text;
+        static const CharFilter vchar;
+        static const CharFilter qdtext;
+        static const CharFilter quoted_right;
 
         byte_string str() const;
     };

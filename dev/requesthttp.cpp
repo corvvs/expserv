@@ -360,12 +360,12 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
 
     const byte_string *ct = holder.get_val(HeaderHTTP::content_type);
     if (!ct || *ct == "") {
-        content_type = "applciation/octet-stream";
-        DXOUT("Content-Type -> \"" << content_type << "\"");
+        content_type.value = "applciation/octet-stream";
+        DXOUT("Content-Type -> \"" << content_type.value << "\"");
         return;
     }
     const light_string lct(*ct);
-    light_string::size_type type_end = lct.find_first_not_of(HTTP::Charset::tchar);
+    light_string::size_type type_end = lct.find_first_not_of(HTTP::CharFilter::tchar);
     if (type_end == light_string::npos) {
         DXOUT("[KO] no /: \"" << lct << "\"");
         return;
@@ -375,7 +375,7 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
         return;
     }
     light_string    type_str(lct, 0, type_end);
-    light_string::size_type subtype_end = lct.find_first_not_of(HTTP::Charset::tchar, type_end + 1);
+    light_string::size_type subtype_end = lct.find_first_not_of(HTTP::CharFilter::tchar, type_end + 1);
     DXOUT(type_end + 1 << ", " << subtype_end);
     light_string    subtype_str(lct, type_end + 1, subtype_end);
     if (subtype_str.size() == 0) {
@@ -386,10 +386,92 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
     if (subtype_end == light_string::npos) {
         return;
     }
-    // parameters があるかも？
-    DXOUT("parameters?");
-    // TODO: コロン区切りリストを分解する
+    content_type.value = lct.substr(0, subtype_end).str();
+    DXOUT("content_type.value: " << content_type.value);
+
+    // media-type     = type "/" subtype *( OWS ";" OWS parameter )
+    light_string    parameters_str(lct, subtype_end);
+    decompose_semicoron_separated_kvlist(parameters_str, content_type.parameters);
 }
+
+void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_string list_str, std::map<byte_string, light_string>& dict) {
+    for (;;) {
+        const light_string  params_str = list_str;
+        // DXOUT("params_str: \"" << params_str << "\"");
+        light_string::size_type sep_pos = params_str.find_first_not_of(HTTP::CharFilter::sp);
+        if (sep_pos == light_string::npos || params_str[sep_pos] != ';') {
+            DXOUT("away");
+            break;
+        }
+        sep_pos = params_str.find_first_not_of(HTTP::CharFilter::sp, sep_pos + 1);
+        // DXOUT("param_sep2: " << sep_pos);
+        if (sep_pos == light_string::npos) {
+            DXOUT("away");
+            break;
+        }
+        // ここからparameterを取得
+        // token
+        light_string::size_type equal_pos = params_str.find_first_not_of(HTTP::CharFilter::tchar, sep_pos);
+        if (equal_pos == light_string::npos || params_str[equal_pos] != '=') {
+            DXOUT("[KO] no equal");
+            break;
+        }
+        const light_string  key_str = params_str.substr(sep_pos, equal_pos - sep_pos);
+        // DXOUT("key: \"" << key_str << "\"");
+        const light_string  value_str(params_str, equal_pos + 1);
+        // DXOUT("value_str: \"" << value_str << "\"");
+        {
+            // parameter      = token "=" ( token / quoted-string )
+            if (HTTP::CharFilter::dquote.includes(value_str[0])) {
+                // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+                // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+                //                ;               !     #-[        ]-~
+                //                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
+                // obs-text       = %x80-FF ; extended ASCII
+                // quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+                light_string::size_type i = 1;
+                bool    quoted = false;
+                for(;i < value_str.size(); ++i) {
+                    const uint8_t c = value_str[i];
+                    if (!quoted && HTTP::CharFilter::dquote.includes(c)) {
+                        // クオートされてないダブルクオート
+                        // -> ここで終わり
+                        break;
+                    }
+                    if (quoted && !HTTP::CharFilter::quoted_right.includes(c)) {
+                        // クオートの右がquoted_rightではない
+                        // -> 不適格
+                        DXOUT("[KO] not suitable for quote");
+                        return;
+                    }
+                    if (!quoted && HTTP::CharFilter::bslash.includes(c)) {
+                        // クオートされてないバックスラッシュ
+                        // -> クオートフラグ立てる
+                        quoted = true;
+                    } else {
+                        quoted = false;
+                    }
+                }
+                // DXOUT("quoted-string: \"" << light_string(value_str, 0, i + 1) << "\"");
+                list_str = value_str.substr(i + 1);
+                dict[key_str.str()] = value_str.substr(0, i + 1);
+            } else {
+                // token          = 1*tchar
+                const light_string::size_type value_end = value_str.find_first_not_of(HTTP::CharFilter::tchar);
+                if (value_end == 0) {
+                    DXOUT("[KO] empty value");
+                    return;
+                }
+                light_string just_value_str(value_str, 0, value_end);
+                // DXOUT("value: \"" << just_value_str << "\"");
+                list_str = value_str.substr(value_end);
+                dict[key_str.str()] = just_value_str;
+            }
+            DXOUT("parameter: " << key_str << " - " << content_type.parameters[key_str.str()]);
+        }
+    }
+}
+
 
 bool    RequestHTTP::is_ready_to_navigate() const {
     return parse_progress >= PARSE_REQUEST_BODY;

@@ -14,6 +14,7 @@
 # include "lightstring.hpp"
 # include "HeaderHTTP.hpp"
 # include "ValidatorHTTP.hpp"
+# include "ControlHeaderHTTP.hpp"
 
 enum t_http_request_parse_progress {
     // 開始行の開始位置 を探している
@@ -59,7 +60,8 @@ public:
         // -1 は未指定をあらわす
         size_t                      body_size;
         byte_string                 header_host;
-        byte_string                 content_type;
+
+        CHContentType               content_type;
 
         // いろいろ抽出関数群
 
@@ -67,6 +69,8 @@ public:
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
         void    determine_body_size(const HeaderHTTPHolder& holder);
         void    determine_content_type(const HeaderHTTPHolder& holder);
+        // "セミコロン分割key-valueリスト" をパースして辞書に詰める
+        void    decompose_semicoron_separated_kvlist(light_string list_str, std::map<byte_string, light_string>& dict);
     };
 
 private:
@@ -109,8 +113,6 @@ private:
     
     // ヘッダから必要な情報を取る
     void    extract_control_headers();
-
-
 
 public:
     RequestHTTP();

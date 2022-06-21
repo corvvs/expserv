@@ -14,6 +14,7 @@ public:
 
     typedef T                                       element;
     typedef std::basic_string<T>                    string_class;
+    typedef HTTP::CharFilter                        filter_type;
     typedef typename string_class::iterator         iterator;
     typedef typename string_class::const_iterator   const_iterator;
     typedef typename string_class::size_type        size_type;
@@ -52,7 +53,9 @@ public:
     LightString(const string_class& str, size_type fi, size_type li = npos):
         base(str),
         first(fi),
-        last(std::max(first, std::min(str.size(), li))) {}
+        last(std::max(first, std::min(str.size(), li))) {
+            DXOUT(first << ":" << last);
+        }
 
     LightString(const string_class& str, const IndexRange& range):
         base(str),
@@ -124,28 +127,27 @@ public:
     // `str` に含まれる文字が(LightString内で)最初に出現する位置を返す
     // `pos`が指定された場合, 位置`pos`以降のみを検索する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    size_type       find_first_of(const string_class& str, size_type pos = 0) const {
+    size_type       find_first_of(const filter_type& filter, size_type pos = 0) const {
         size_type d = length();
         if (pos >= d) {
             return npos;
         }
-        const_iterator it = std::find_first_of(begin() + pos, end(), str.begin(), str.end());
-        if (it == end()) {
-            return npos;
+        for (typename string_class::size_type i = pos; i < size(); ++i) {
+            if (filter.includes(operator[](i))) {
+                return i;
+            }
         }
-        return std::distance(begin(), it);
+        return npos;
     }
 
     // `str` に含まれる文字が(LightString内で)最後に出現する位置を返す
     // `pos`が指定された場合, 位置`pos`以降のみを検索する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    size_type       find_last_of(const string_class& str, size_type pos = 0) const {
+    size_type       find_last_of(const filter_type& filter, size_type pos = 0) const {
         size_type d = length();
         if (pos >= d) {
             return npos;
         }
-        HTTP::CharFilter   filter(str);
-        DSOUT() << first + pos << ", " << last << std::endl;
         for (typename string_class::size_type i = last; first + pos < i;) {
             --i;
             if (filter.includes(base[i])) {
@@ -158,7 +160,7 @@ public:
     // `str` に含まれない文字が(LightString内で)最初に出現する位置を返す
     // `pos`が指定された場合, 位置`pos`以降のみを検索する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    size_type       find_first_not_of(const string_class& str, size_type pos = 0) const {
+    size_type       find_first_not_of(const filter_type& filter, size_type pos = 0) const {
         size_type d = length();
         if (pos >= d) {
             return npos;
@@ -167,7 +169,7 @@ public:
             return npos;
         }
         for (size_type i = pos; i < size(); ++i) {
-            if (str.find_first_of(operator[](i)) == std::string::npos) {
+            if (!filter.includes(operator[](i))) {
                 return i;
             }
         }
@@ -177,7 +179,7 @@ public:
     // `str` に含まれる文字が(LightString内で)最後に出現する位置を返す
     // `pos`が指定された場合, 位置`pos`以降のみを検索する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    size_type       find_last_not_of(const string_class& str, size_type pos = 0) const {
+    size_type       find_last_not_of(const filter_type& filter, size_type pos = 0) const {
         size_type d = length();
         if (pos >= d) {
             return npos;
@@ -187,7 +189,7 @@ public:
         }
         for (size_type i = size(); 0 + pos < i;) {
             --i;
-            if (str.find_first_of(operator[](i)) == std::string::npos) {
+            if (!filter.includes(operator[](i))) {
                 return i;
             }
         }
@@ -228,20 +230,20 @@ public:
     // `n`を指定しなかった場合, 新たな LightString の終端は現在の終端と一致する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
     LightString substr(size_type pos = 0, size_type n = std::string::npos) const {
+        if (pos == std::string::npos) {
+            return LightString(*this, size(), size());
+        }
         if (n == std::string::npos) {
-            return LightString(base, begin() + pos, end());
+            return LightString(*this, pos, size());
         }
         size_type   rlen = size() - pos;
         if (n < rlen) { // pos + n < size()
             rlen = n;
         }
-        DSOUT() << "n = " << n << std::endl;
-        DSOUT() << pos << ", " << pos + rlen << std::endl;
-        return LightString(base, begin() + pos, begin() + pos + rlen);
+        return LightString(*this, pos, pos + rlen);
     }
 
-    std::vector<LightString>    split(const string_class& charset) const {
-        HTTP::CharFilter            filter(charset);
+    std::vector<LightString>    split(const filter_type& filter) const {
         std::vector<LightString>    rv;
         size_type word_from = 0;
         size_type word_to = 0;
@@ -252,7 +254,7 @@ public:
                 if (prev_is_sp) {
                     word_from = i;
                 }
-                DXOUT("substr(" << word_from << ", " << word_to - word_from << ")");
+                // DXOUT("substr(" << word_from << ", " << word_to - word_from << ")");
                 rv.push_back(substr(word_from, word_to - word_from));
                 prev_is_sp = true;
             } else {
@@ -265,17 +267,19 @@ public:
         return rv;
     }
 
-    LightString ltrim(const string_class& charset) const {
-        size_type first = find_first_not_of(charset);
+    // 文字集合`fil`内の文字を左側について切り落とした新たなLightStringを返す
+    LightString ltrim(const filter_type& fil) const {
+        size_type first = find_first_not_of(fil);
         if (first == npos) {
-            return LightString(*this, 0, 0);
+            return LightString(*this, size(), size());
         } else {
             return LightString(*this, first, size());
         }
     }
 
-    LightString rtrim(const string_class& charset) const {
-        size_type last = find_last_not_of(charset);
+    // 文字集合`fil`内の文字を右側について切り落とした新たなLightStringを返す
+    LightString rtrim(const filter_type& fil) const {
+        size_type last = find_last_not_of(fil);
         if (last == npos) {
             return LightString(*this, 0, 0);
         } else {
@@ -283,14 +287,9 @@ public:
         }
     }
 
-    LightString trim(const string_class& charset) const {
-        size_type first = find_first_not_of(charset);
-        size_type last = find_last_not_of(charset);
-        if (last == npos) {
-            return LightString(*this, 0, 0);
-        } else {
-            return LightString(*this, first, last + 1);
-        }
+    // 文字集合`fil`内の文字を左右から切り落とした新たなLightStringを返す
+    LightString trim(const filter_type& fil) const {
+        return ltrim(fil).rtrim(fil);
     }
 };
 

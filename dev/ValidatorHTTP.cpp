@@ -144,7 +144,7 @@ bool    HTTP::Validator::is_ipv4address(const HTTP::light_string& str) {
             DXOUT("[KO] invalid length for ipv4 addr component: " << spl);
             return false;
         }
-        light_string::size_type res = spl.find_first_not_of(Charset::digit);
+        light_string::size_type res = spl.find_first_not_of(CharFilter::digit);
         if (res != light_string::npos) {
             // [NG] 数字でない文字がある
             DXOUT("[KO] non digit char in ipv4 addr component: " << spl);
@@ -192,14 +192,14 @@ bool    HTTP::Validator::is_reg_name(const light_string& str) {
 
 bool    HTTP::Validator::is_port(const light_string& str) {
     // port          = *DIGIT
-    return str.find_first_not_of(Charset::digit) == light_string::npos;
+    return str.find_first_not_of(CharFilter::digit) == light_string::npos;
 }
 
 bool    HTTP::Validator::is_h16(const light_string& str) {
     // h16           = 1*4HEXDIG; 1~4桁の16進数
     if (str.size() < 1) { return false; }
     if (str.size() > 4) { return false; }
-    return str.find_first_not_of(Charset::hexdig) == light_string::npos;
+    return str.find_first_not_of(CharFilter::hexdig) == light_string::npos;
 }
 
 bool    HTTP::Validator::is_ls32(const light_string& str) {
