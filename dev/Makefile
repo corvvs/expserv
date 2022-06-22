@@ -18,6 +18,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					http_error.cpp\
 					http.cpp\
 					httpserver.cpp\
+					utils_string.cpp\
 					test_common.cpp
 
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)

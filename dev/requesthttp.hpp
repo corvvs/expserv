@@ -15,6 +15,7 @@
 # include "HeaderHTTP.hpp"
 # include "ValidatorHTTP.hpp"
 # include "ControlHeaderHTTP.hpp"
+# include "utils_string.hpp"
 
 enum t_http_request_parse_progress {
     // 開始行の開始位置 を探している

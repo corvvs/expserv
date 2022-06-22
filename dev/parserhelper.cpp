@@ -133,11 +133,12 @@ std::vector< HTTP::light_string >   ParserHelper::split(
     return lstr.split(charset);
 }
 
+ParserHelper::byte_string   ParserHelper::normalize_header_key(const byte_string& key) {
+    return HTTP::Utils::downcase(key);
+}
 
-void    ParserHelper::normalize_header_key(byte_string& key) {
-    for (byte_string::iterator it = key.begin(); it != key.end(); it++) {
-        *it = tolower(*it);
-    }
+ParserHelper::byte_string   ParserHelper::normalize_header_key(const HTTP::light_string& key) {
+    return normalize_header_key(key.str());
 }
 
 unsigned int    ParserHelper::stou(const byte_string& str) {

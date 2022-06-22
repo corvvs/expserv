@@ -9,6 +9,7 @@
 # include "ValidatorHTTP.hpp"
 # include "test_common.hpp"
 # include "IndexRange.hpp"
+# include "utils_string.hpp"
 
 namespace ParserHelper {
     typedef HTTP::byte_string               byte_string;
@@ -52,7 +53,8 @@ namespace ParserHelper {
         const byte_string& charset
     );
 
-    void        normalize_header_key(byte_string& key);
+    byte_string normalize_header_key(const byte_string& key);
+    byte_string normalize_header_key(const HTTP::light_string& key);
 
     // string to size_t 変換
     unsigned int    stou(const byte_string& str);

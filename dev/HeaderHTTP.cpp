@@ -68,8 +68,7 @@ const HeaderHTTPItem::value_list_type&
 // [HeaderHTTPHolder]
 
 void    HeaderHTTPHolder::add_item(const light_string& key, const header_val_type& val) {
-    header_key_type norm_key(key.str());
-    ParserHelper::normalize_header_key(norm_key);
+    header_key_type norm_key = ParserHelper::normalize_header_key(key);
     HeaderHTTPItem* item = dict[norm_key];
     if (item == NULL) {
         list.push_back(HeaderHTTPItem(norm_key));

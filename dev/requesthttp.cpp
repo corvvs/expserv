@@ -395,6 +395,7 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
 }
 
 void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_string list_str, std::map<byte_string, light_string>& dict) {
+    // *( OWS ";" OWS parameter )
     for (;;) {
         const light_string  params_str = list_str;
         // DXOUT("params_str: \"" << params_str << "\"");
@@ -416,12 +417,17 @@ void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_s
             DXOUT("[KO] no equal");
             break;
         }
-        const light_string  key_str = params_str.substr(sep_pos, equal_pos - sep_pos);
-        // DXOUT("key: \"" << key_str << "\"");
+        // [引数名]
+        // 引数名はcase-insensitive
+        // https://wiki.suikawiki.org/n/Content-Type#anchor-11
+        // > 引数名は、大文字・小文字の区別なしで定義されています。
+        const light_string  key_lstr = params_str.substr(sep_pos, equal_pos - sep_pos);
+
         const light_string  value_str(params_str, equal_pos + 1);
-        // DXOUT("value_str: \"" << value_str << "\"");
         {
+            //                  [key]            [value]
             // parameter      = token "=" ( token / quoted-string )
+            byte_string   key_str = ParserHelper::normalize_header_key(key_lstr);
             if (HTTP::CharFilter::dquote.includes(value_str[0])) {
                 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
                 // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
@@ -454,7 +460,7 @@ void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_s
                 }
                 // DXOUT("quoted-string: \"" << light_string(value_str, 0, i + 1) << "\"");
                 list_str = value_str.substr(i + 1);
-                dict[key_str.str()] = value_str.substr(0, i + 1);
+                dict[key_str] = value_str.substr(0, i + 1);
             } else {
                 // token          = 1*tchar
                 const light_string::size_type value_end = value_str.find_first_not_of(HTTP::CharFilter::tchar);
@@ -465,11 +471,12 @@ void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_s
                 light_string just_value_str(value_str, 0, value_end);
                 // DXOUT("value: \"" << just_value_str << "\"");
                 list_str = value_str.substr(value_end);
-                dict[key_str.str()] = just_value_str;
+                dict[key_str] = just_value_str;
             }
-            DXOUT("parameter: " << key_str << " - " << content_type.parameters[key_str.str()]);
+            DXOUT("parameter: " << key_str << " - " << content_type.parameters[key_str]);
         }
     }
+    DXOUT("parameter: " << content_type.parameters.size());
 }
 
 
