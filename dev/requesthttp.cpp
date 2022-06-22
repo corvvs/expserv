@@ -25,7 +25,8 @@ RequestHTTP::ParserStatus::ParserStatus(): found_obs_fold(false) {}
 
 RequestHTTP::RequestHTTP():
     mid(0),
-    parse_progress(PARSE_REQUEST_REQLINE_START)
+    parse_progress(PARSE_REQUEST_REQLINE_START),
+    cp()
 {
     cp.http_method = HTTP::METHOD_UNKNOWN;
     cp.http_version = HTTP::V_UNKNOWN;
@@ -305,18 +306,36 @@ void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holde
         if (http_version == HTTP::V_1_1) {
             throw http_error("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
         }
-        header_host = ""; // no host
-    } else if (hosts->size() > 1) {
+        return;
+    }
+    if (hosts->size() > 1) {
         // Hostが複数ある場合, BadRequest を出す
         throw http_error("multiple hosts", HTTP::STATUS_BAD_REQUEST);
+    }
+    // Hostの値のバリデーション (と, 必要ならBadRequest)
+    const HTTP::light_string lhost(hosts->front());
+    if (!HTTP::Validator::is_valid_header_host(lhost)) {
+        throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
+    }
+    // この時点で lhost は Host: として妥当
+    // -> 1文字目が [ かどうかで ipv6(vfuture) かどうかを判別する.
+    if (lhost[0] == '[') {
+        // ipv6 or ipvfuture
+        HTTP::light_string::size_type i = lhost.find_last_of("]");
+        header_host.host = lhost.substr(0, i + 1).str();
+        if (i + 1 < lhost.size()) {
+            header_host.port = lhost.substr(i + 2).str();
+        }
     } else {
-        // TODO: Hostの値のバリデーション (と, 必要ならBadRequest)
-        HTTP::light_string lhost(hosts->front());
-        DSOUT() << "lhost: " << lhost << std::endl;
-        if (!HTTP::Validator::is_valid_header_host(lhost)) {
-            throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
+        // ipv4 or reg-name
+        HTTP::light_string::size_type i = lhost.find_last_of(":");
+        header_host.host = lhost.substr(0, i).str();
+        if (i != HTTP::light_string::npos) {
+            header_host.port = lhost.substr(i + 1).str();
         }
     }
+    DXOUT("host: \"" << header_host.host << "\"");
+    DXOUT("port: \"" << header_host.port << "\"");
 }
 
 void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
@@ -376,7 +395,6 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
     }
     light_string    type_str(lct, 0, type_end);
     light_string::size_type subtype_end = lct.find_first_not_of(HTTP::CharFilter::tchar, type_end + 1);
-    DXOUT(type_end + 1 << ", " << subtype_end);
     light_string    subtype_str(lct, type_end + 1, subtype_end);
     if (subtype_str.size() == 0) {
         DXOUT("[KO] no subtype after /: \"" << lct << "\"");

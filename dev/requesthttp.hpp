@@ -59,10 +59,10 @@ public:
         HTTP::t_version                 http_version;
 
         // -1 は未指定をあらわす
-        size_t                      body_size;
-        byte_string                 header_host;
+        size_t                          body_size;
 
-        CHContentType               content_type;
+        HTTP::CH::Host                  header_host;
+        HTTP::CH::ContentType           content_type;
 
         // いろいろ抽出関数群
 

@@ -33,7 +33,7 @@ bool    HTTP::Validator::is_ip_literal(const light_string& str) {
     if (str[0] != '[') { return false; }
     if (str[str.size() - 1] != ']') { return false; }
     const light_string inner = str.substr(1, str.size() - 2);
-    DXOUT("inner: " << inner);
+    // DXOUT("inner: " << inner);
     return is_ipv6address(inner) || is_ipvfuture(inner);
 }
 
@@ -58,14 +58,14 @@ bool    HTTP::Validator::is_ipv6address(const light_string& str) {
     //   - "::"がない場合, 省略された要素はない -> h16とls32あわせて16オクテットがすべて顕になっているはず
     light_string::size_type first_coroncoron = str.find("::");
     light_string::size_type last_coroncoron = str.rfind("::");
-    DXOUT(first_coroncoron << " - " << last_coroncoron);
+    // DXOUT(first_coroncoron << " - " << last_coroncoron);
     if (first_coroncoron != last_coroncoron) {
         DXOUT( "[KO] multiple \"::\"" );
         return false;
     }
     // 2. ":" で(空文字列ありで)分割
     std::vector< light_string > splitted = ParserHelper::split(str, ":");
-    DXOUT("splitted.size() = " << splitted.size());
+    // DXOUT("splitted.size() = " << splitted.size());
     if (splitted.size() < 1 || 8 < splitted.size()) {
         return false;
     }
@@ -75,7 +75,7 @@ bool    HTTP::Validator::is_ipv6address(const light_string& str) {
     for (; i < splitted.size() - 1; ++i) {
         if (splitted[i].size() > 0) {
             if (!is_h16(splitted[i])) {
-                DXOUT("it's not a h16: " << splitted[i]);
+                // DXOUT("it's not a h16: " << splitted[i]);
                 return false;
             }
             octets += 2;
@@ -103,10 +103,10 @@ bool    HTTP::Validator::is_ipv6address(const light_string& str) {
     } else if (is_h16(splitted[i])) {
         octets += 2;
     } else {
-        DXOUT("it's not a ls32 or h16: " << splitted[i]);
+        // DXOUT("it's not a ls32 or h16: " << splitted[i]);
         return false;
     }
-    DXOUT("octets: " << octets);
+    // DXOUT("octets: " << octets);
     return octets <= 16;
 }
 
@@ -184,7 +184,7 @@ bool    HTTP::Validator::is_reg_name(const light_string& str) {
                 continue;
             }
         }
-        DXOUT("unexpected char detected: '" << str[i] << "'");
+        // DXOUT("unexpected char detected: '" << str[i] << "'");
         return false;
     }
     return true;
