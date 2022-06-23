@@ -262,6 +262,21 @@ public:
         return substr(n);
     }
 
+    // 「`pos`以降で最初に`filter`にマッチする位置」の直前までを参照する LightString を生成して返す
+    // `pos`以前の部分も含まれることに注意.
+    // ※ substr(0, find_first_of(filter, pos)) と等価
+    LightString substr_before(const filter_type& filter, size_type pos = 0) const {
+        size_type n = find_first_of(filter, pos);
+        return substr(0, n);
+    }
+
+    // 「`pos`以降で最初に`filter`にマッチする位置」から後の部分参照する LightString を生成して返す
+    // ※ substr(find_first_of(filter, pos)) と等価
+    LightString substr_from(const filter_type& filter, size_type pos = 0) const {
+        size_type n = find_first_of(filter, pos);
+        return substr(n);
+    }
+
     std::vector<LightString>    split(const filter_type& filter) const {
         std::vector<LightString>    rv;
         size_type word_from = 0;
