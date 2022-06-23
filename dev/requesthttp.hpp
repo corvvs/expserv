@@ -63,15 +63,19 @@ public:
 
         HTTP::CH::Host                  header_host;
         HTTP::CH::ContentType           content_type;
+        HTTP::CH::TransferEncoding      transfer_encoding;
 
         // いろいろ抽出関数群
 
         void    determine_host(const HeaderHTTPHolder& holder);
+        void    determine_transfer_encoding(const HeaderHTTPHolder& holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
         void    determine_body_size(const HeaderHTTPHolder& holder);
         void    determine_content_type(const HeaderHTTPHolder& holder);
+
         // "セミコロン分割key-valueリスト" をパースして辞書に詰める
-        void    decompose_semicoron_separated_kvlist(light_string list_str, std::map<byte_string, light_string>& dict);
+        // その後, パースできた部分以降を返す
+        light_string    decompose_semicoron_separated_kvlist(const light_string& list_str, HTTP::IDictHolder& holder);
     };
 
 private:

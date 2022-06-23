@@ -290,52 +290,10 @@ void    RequestHTTP::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     // TODO: ここで何を抽出すべきか洗い出す
 
-    // [host]
     cp.determine_host(header_holder);
-    // [bodyの長さ]
-    cp.determine_body_size(header_holder);
-
     cp.determine_content_type(header_holder);
-}
-
-void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holder) {
-    // https://triple-underscore.github.io/RFC7230-ja.html#header.host
-    const HeaderHTTPHolder::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
-    if (!hosts || hosts->size() == 0) {
-        // HTTP/1.1 なのに host がない場合, BadRequest を出す
-        if (http_version == HTTP::V_1_1) {
-            throw http_error("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
-        }
-        return;
-    }
-    if (hosts->size() > 1) {
-        // Hostが複数ある場合, BadRequest を出す
-        throw http_error("multiple hosts", HTTP::STATUS_BAD_REQUEST);
-    }
-    // Hostの値のバリデーション (と, 必要ならBadRequest)
-    const HTTP::light_string lhost(hosts->front());
-    if (!HTTP::Validator::is_valid_header_host(lhost)) {
-        throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
-    }
-    // この時点で lhost は Host: として妥当
-    // -> 1文字目が [ かどうかで ipv6(vfuture) かどうかを判別する.
-    if (lhost[0] == '[') {
-        // ipv6 or ipvfuture
-        HTTP::light_string::size_type i = lhost.find_last_of("]");
-        header_host.host = lhost.substr(0, i + 1).str();
-        if (i + 1 < lhost.size()) {
-            header_host.port = lhost.substr(i + 2).str();
-        }
-    } else {
-        // ipv4 or reg-name
-        HTTP::light_string::size_type i = lhost.find_last_of(":");
-        header_host.host = lhost.substr(0, i).str();
-        if (i != HTTP::light_string::npos) {
-            header_host.port = lhost.substr(i + 1).str();
-        }
-    }
-    DXOUT("host: \"" << header_host.host << "\"");
-    DXOUT("port: \"" << header_host.port << "\"");
+    cp.determine_transfer_encoding(header_holder);
+    cp.determine_body_size(header_holder);
 }
 
 void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
@@ -366,6 +324,104 @@ void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& 
     body_size = 0;
     DXOUT("body_size is zero.");
 }
+void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holder) {
+    // https://triple-underscore.github.io/RFC7230-ja.html#header.host
+    const HeaderHTTPHolder::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
+    if (!hosts || hosts->size() == 0) {
+        // HTTP/1.1 なのに host がない場合, BadRequest を出す
+        if (http_version == HTTP::V_1_1) {
+            throw http_error("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
+        }
+        return;
+    }
+    if (hosts->size() > 1) {
+        // Hostが複数ある場合, BadRequest を出す
+        throw http_error("multiple hosts", HTTP::STATUS_BAD_REQUEST);
+    }
+    // Hostの値のバリデーション (と, 必要ならBadRequest)
+    const HTTP::light_string lhost(hosts->front());
+    if (!HTTP::Validator::is_valid_header_host(lhost)) {
+        throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
+    }
+    header_host.value = lhost.get_base();
+    // この時点で lhost は Host: として妥当
+    // -> 1文字目が [ かどうかで ipv6(vfuture) かどうかを判別する.
+    if (lhost[0] == '[') {
+        // ipv6 or ipvfuture
+        HTTP::light_string::size_type i = lhost.find_last_of("]");
+        header_host.host = lhost.substr(0, i + 1).str();
+        if (i + 1 < lhost.size()) {
+            header_host.port = lhost.substr(i + 2).str();
+        }
+    } else {
+        // ipv4 or reg-name
+        HTTP::light_string::size_type i = lhost.find_last_of(":");
+        header_host.host = lhost.substr(0, i).str();
+        if (i != HTTP::light_string::npos) {
+            header_host.port = lhost.substr(i + 1).str();
+        }
+    }
+    DXOUT("host: \"" << header_host.host << "\"");
+    DXOUT("port: \"" << header_host.port << "\"");
+}
+
+void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHolder& holder) {
+    // https://httpwg.org/specs/rfc7230.html#header.transfer-encoding
+    // Transfer-Encoding  = 1#transfer-coding
+    // transfer-coding    = "chunked"
+    //                    / "compress"
+    //                    / "deflate"
+    //                    / "gzip"
+    //                    / transfer-extension
+    // transfer-extension = token *( OWS ";" OWS transfer-parameter )
+    // transfer-parameter = token BWS "=" BWS ( token / quoted-string )
+
+    const HeaderHTTPHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::transfer_encoding);
+    if (!tes) { return; }
+    for (HeaderHTTPHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
+        light_string    val_lstr = light_string(*it);
+        for (;;) {
+            DXOUT("val_lstr: \"" << val_lstr << "\"");
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+            if (val_lstr.size() == 0) {
+                DXOUT("away; sp only.");
+                break;
+            }
+            light_string tc_lstr = val_lstr.substr_while(HTTP::CharFilter::tchar);
+            if (tc_lstr.size() == 0) {
+                DXOUT("away; no value.");
+                break;
+            }
+
+            // 本体
+            DXOUT("tc_lstr: \"" << tc_lstr << "\"");
+            HTTP::Term::TransferCoding  tc;
+            tc.coding = tc_lstr.str();
+            transfer_encoding.tranfer_codings.push_back(tc);
+            
+            // 後続
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
+            if (val_lstr.size() == 0) {
+                DXOUT("away");
+                break;
+            }
+            // cat(sp_end) が "," か ";" かによって分岐
+            DXOUT("val_lstr.cat(0): " << val_lstr.cat(0));
+            if (val_lstr.cat(0) == ',') {
+                // 次の要素
+                val_lstr = val_lstr.substr(1);
+            } else if (val_lstr.cat(0) == ';') {
+                // parameterがはじまる
+                val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.tranfer_codings.back());
+            } else {
+                // 不正な要素
+                DXOUT("[KO] unexpected state: \"" << val_lstr.substr(0) << "\"");
+                break;
+            }
+        }
+    }
+
+}
 
 void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder& holder) {
     // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type header field is not present, the recipient MAY either assume a media type of "application/octet-stream" ([RFC2046], Section 4.5.1) or examine the data to determine its type.
@@ -379,8 +435,7 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
 
     const byte_string *ct = holder.get_val(HeaderHTTP::content_type);
     if (!ct || *ct == "") {
-        content_type.value = "applciation/octet-stream";
-        DXOUT("Content-Type -> \"" << content_type.value << "\"");
+        content_type.value = HTTP::CH::ContentType::default_value;
         return;
     }
     const light_string lct(*ct);
@@ -409,43 +464,55 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
 
     // media-type     = type "/" subtype *( OWS ";" OWS parameter )
     light_string    parameters_str(lct, subtype_end);
-    decompose_semicoron_separated_kvlist(parameters_str, content_type.parameters);
+    light_string    continuation = decompose_semicoron_separated_kvlist(parameters_str, content_type);
+    DXOUT("parameter: " << content_type.parameters.size());
+    DXOUT("continuation: \"" << continuation << "\"");
 }
 
-void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_string list_str, std::map<byte_string, light_string>& dict) {
+RequestHTTP::light_string
+    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(
+        const light_string& kvlist_str,
+        HTTP::IDictHolder& holder
+    ) {
+    light_string list_str = kvlist_str;
     // *( OWS ";" OWS parameter )
     for (;;) {
-        const light_string  params_str = list_str;
-        // DXOUT("params_str: \"" << params_str << "\"");
-        light_string::size_type sep_pos = params_str.find_first_not_of(HTTP::CharFilter::sp);
-        if (sep_pos == light_string::npos || params_str[sep_pos] != ';') {
-            DXOUT("away");
-            break;
+        light_string  params_str = list_str;
+        DXOUT("params_str: \"" << params_str << "\"");
+        params_str = params_str.substr_after(HTTP::CharFilter::sp);
+        if (params_str.size() == 0) {
+            DXOUT("away, there's only sp.");
+            return params_str;
         }
-        sep_pos = params_str.find_first_not_of(HTTP::CharFilter::sp, sep_pos + 1);
-        // DXOUT("param_sep2: " << sep_pos);
-        if (sep_pos == light_string::npos) {
+        if (params_str.cat(0) != ';') {
             DXOUT("away");
-            break;
+            return params_str;
+        }
+        params_str = params_str.substr_after(HTTP::CharFilter::sp, 1);
+        // DXOUT("param_sep2: " << sep_pos);
+        if (params_str.size() == 0) {
+            DXOUT("[KO] there's only sp after ';'");
+            return params_str;
         }
         // ここからparameterを取得
         // token
-        light_string::size_type equal_pos = params_str.find_first_not_of(HTTP::CharFilter::tchar, sep_pos);
-        if (equal_pos == light_string::npos || params_str[equal_pos] != '=') {
+        const light_string key_lstr = params_str.substr_while(HTTP::CharFilter::tchar);
+        if (key_lstr.size() == params_str.size() || params_str.cat(key_lstr.size()) != '=') {
             DXOUT("[KO] no equal");
-            break;
+            return params_str.substr(params_str.size());
         }
         // [引数名]
         // 引数名はcase-insensitive
         // https://wiki.suikawiki.org/n/Content-Type#anchor-11
         // > 引数名は、大文字・小文字の区別なしで定義されています。
-        const light_string  key_lstr = params_str.substr(sep_pos, equal_pos - sep_pos);
+        params_str = params_str.substr(key_lstr.size() + 1);
 
-        const light_string  value_str(params_str, equal_pos + 1);
+        const light_string  value_str = params_str;
+        byte_string         key_str = ParserHelper::normalize_header_key(key_lstr);
+        DXOUT("key: \"" << key_str << "\"");
         {
             //                  [key]            [value]
             // parameter      = token "=" ( token / quoted-string )
-            byte_string   key_str = ParserHelper::normalize_header_key(key_lstr);
             if (HTTP::CharFilter::dquote.includes(value_str[0])) {
                 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
                 // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
@@ -466,7 +533,7 @@ void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_s
                         // クオートの右がquoted_rightではない
                         // -> 不適格
                         DXOUT("[KO] not suitable for quote");
-                        return;
+                        return params_str.substr(params_str.size());
                     }
                     if (!quoted && HTTP::CharFilter::bslash.includes(c)) {
                         // クオートされてないバックスラッシュ
@@ -478,23 +545,23 @@ void    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(light_s
                 }
                 // DXOUT("quoted-string: \"" << light_string(value_str, 0, i + 1) << "\"");
                 list_str = value_str.substr(i + 1);
-                dict[key_str] = value_str.substr(0, i + 1);
+                DXOUT("value: \"" << value_str.substr(0, i + 1) << "\"");
+                holder.store_list_item(key_str, value_str.substr(0, i + 1));
             } else {
                 // token          = 1*tchar
                 const light_string::size_type value_end = value_str.find_first_not_of(HTTP::CharFilter::tchar);
                 if (value_end == 0) {
                     DXOUT("[KO] empty value");
-                    return;
+                    return params_str.substr(params_str.size());
                 }
                 light_string just_value_str(value_str, 0, value_end);
-                // DXOUT("value: \"" << just_value_str << "\"");
+                DXOUT("value: \"" << just_value_str << "\"");
                 list_str = value_str.substr(value_end);
-                dict[key_str] = just_value_str;
+                holder.store_list_item(key_str, just_value_str);
             }
-            DXOUT("parameter: " << key_str << " - " << content_type.parameters[key_str]);
         }
     }
-    DXOUT("parameter: " << content_type.parameters.size());
+    return list_str;
 }
 
 
