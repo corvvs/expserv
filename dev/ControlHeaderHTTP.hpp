@@ -68,6 +68,15 @@ namespace HTTP {
 
             void    store_list_item(const parameter_key_type& key, const parameter_value_type& val);
         };
+
+        struct Connection {
+            std::vector<byte_string>    connection_options;
+            bool    keep_alive_; // keep-alive が true == 持続的接続を行う とは限らないことに注意.
+            bool    close_;
+
+            bool    will_keep_alive() const;
+            bool    will_close() const;
+        };
     }
 }
 

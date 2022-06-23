@@ -64,6 +64,7 @@ public:
         HTTP::CH::Host                  header_host;
         HTTP::CH::ContentType           content_type;
         HTTP::CH::TransferEncoding      transfer_encoding;
+        HTTP::CH::Connection            connection;
 
         // いろいろ抽出関数群
 
@@ -72,6 +73,8 @@ public:
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
         void    determine_body_size(const HeaderHTTPHolder& holder);
         void    determine_content_type(const HeaderHTTPHolder& holder);
+        void    determine_connection(const HeaderHTTPHolder& holder);
+        
 
         // "セミコロン分割key-valueリスト" をパースして辞書に詰める
         // その後, パースできた部分以降を返す

@@ -294,6 +294,7 @@ void    RequestHTTP::extract_control_headers() {
     cp.determine_content_type(header_holder);
     cp.determine_transfer_encoding(header_holder);
     cp.determine_body_size(header_holder);
+    cp.determine_connection(header_holder);
 }
 
 void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
@@ -470,6 +471,56 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
     DXOUT("parameter: " << content_type.parameters.size());
     DXOUT("continuation: \"" << continuation << "\"");
 }
+
+void    RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder& holder) {
+    const HeaderHTTPHolder::value_list_type *cons = holder.get_vals(HeaderHTTP::connection);
+    if (!cons) { return; }
+    for (HeaderHTTPHolder::value_list_type::const_iterator it = cons->begin(); it != cons->end(); ++it) {
+        light_string    val_lstr = light_string(*it);
+        for (;;) {
+            DXOUT("val_lstr: \"" << val_lstr << "\"");
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+            if (val_lstr.size() == 0) {
+                DXOUT("away; sp only.");
+                break;
+            }
+            light_string target_lstr = val_lstr.substr_while(HTTP::CharFilter::tchar);
+            if (target_lstr.size() == 0) {
+                DXOUT("away; no value.");
+                break;
+            }
+
+            // 本体
+            byte_string target_str = HTTP::Utils::downcase(target_lstr.str());
+            DXOUT("target_str: \"" << target_str << "\"");
+            connection.connection_options.push_back(target_str);
+            if (target_str == "close") {
+                connection.close_ = true;
+            } else if (target_str == "keep-alive") {
+                connection.keep_alive_ = true;
+            }
+
+            // 後続
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, target_lstr.size());
+            if (val_lstr.size() == 0) {
+                DXOUT("away");
+                break;
+            }
+            // cat(sp_end) が "," か ";" かによって分岐
+            DXOUT("val_lstr.cat(0): " << val_lstr.cat(0));
+            if (val_lstr.cat(0) == ',') {
+                // 次の要素
+                val_lstr = val_lstr.substr(1);
+            } else {
+                // 不正な要素
+                DXOUT("[KO] unexpected state: \"" << val_lstr.substr(0) << "\"");
+                break;
+            }
+        }
+    }
+    DXOUT("close: " << connection.will_close() << ", keep-alive: " << connection.will_keep_alive());
+}
+
 
 RequestHTTP::light_string
     RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(

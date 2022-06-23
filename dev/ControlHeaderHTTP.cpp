@@ -21,3 +21,14 @@ void
     HTTP::CH::ContentType::store_list_item(const parameter_key_type& key, const parameter_value_type& val) {
     parameters[key] = val;
 }
+
+bool
+    HTTP::CH::Connection::will_close() const {
+    return close_;
+}
+
+bool
+    HTTP::CH::Connection::will_keep_alive() const {
+    return !close_ && keep_alive_;
+}
+
