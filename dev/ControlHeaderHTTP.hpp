@@ -1,7 +1,7 @@
 #ifndef CONTROLHEADERHTTP_HPP
 # define CONTROLHEADERHTTP_HPP
 # include "http.hpp"
-# include "lightstring.hpp"
+# include "LightString.hpp"
 # include <vector>
 # include <map>
 

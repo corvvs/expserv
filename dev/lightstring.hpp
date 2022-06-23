@@ -2,6 +2,7 @@
 # define LIGHTSTRING_HPP
 # include <string>
 # include <algorithm>
+# include "CharFilter.hpp"
 # include "IndexRange.hpp"
 
 const std::string blank_str = "";

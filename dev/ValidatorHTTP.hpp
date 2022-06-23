@@ -1,7 +1,7 @@
 #ifndef VALIDATORHTTP_HPP
 # define VALIDATORHTTP_HPP
 # include "http.hpp"
-# include "lightstring.hpp"
+# include "LightString.hpp"
 # include <string>
 # include <list>
 # include <map>

@@ -5,7 +5,7 @@
 # include <utility>
 # include <sstream>
 # include "http.hpp"
-# include "lightstring.hpp"
+# include "LightString.hpp"
 # include "ValidatorHTTP.hpp"
 # include "test_common.hpp"
 # include "IndexRange.hpp"

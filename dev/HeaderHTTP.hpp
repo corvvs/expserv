@@ -1,7 +1,7 @@
 #ifndef HEADERITEMHTTP_HPP
 # define HEADERITEMHTTP_HPP
 # include "http.hpp"
-# include "lightstring.hpp"
+# include "LightString.hpp"
 # include <string>
 # include <list>
 # include <map>

@@ -5,7 +5,7 @@
 # include <iostream>
 # include "test_common.hpp"
 # include "IndexRange.hpp"
-# include "lightstring.hpp"
+# include "LightString.hpp"
 
 template <class T>
 class SimplePattern {

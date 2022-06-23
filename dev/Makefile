@@ -17,6 +17,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					time.cpp\
 					http_error.cpp\
 					http.cpp\
+					CharFilter.cpp\
 					httpserver.cpp\
 					utils_string.cpp\
 					test_common.cpp

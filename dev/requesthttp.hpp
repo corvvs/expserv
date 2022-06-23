@@ -11,7 +11,7 @@
 # include "http.hpp"
 # include "http_error.hpp"
 # include "parserhelper.hpp"
-# include "lightstring.hpp"
+# include "LightString.hpp"
 # include "HeaderHTTP.hpp"
 # include "ValidatorHTTP.hpp"
 # include "ControlHeaderHTTP.hpp"
