@@ -36,17 +36,25 @@ namespace HTTP {
 
         // Host
         struct Host {
+            // Host: の値全体
             HTTP::byte_string   value;
-            HTTP::byte_string   port;
+            // Host: のホスト部分
             HTTP::byte_string   host;
+            // Host: のポート部分; 未指定なら空文字列
+            HTTP::byte_string   port;
         };
 
         // Transfer-Encoding
         struct TransferEncoding {
-            std::vector<HTTP::Term::TransferCoding>   tranfer_codings;
+            // 指定されたTransferCodingが登場順に入る.
+            std::vector<HTTP::Term::TransferCoding> tranfer_codings;
+            // 現在のTransferCodingが "chunked" かどうか.
+            bool                                    currently_chunked;
 
+            // 指定がないかどうか
             bool                        empty() const;
-            const Term::TransferCoding& curr_coding() const;
+            // 現在のTransferCoding; empty() == true の時に呼び出してはならない.
+            const Term::TransferCoding& current_coding() const;
         };
 
         // Content-Type

@@ -420,7 +420,9 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
             }
         }
     }
-
+    transfer_encoding.currently_chunked =
+        !transfer_encoding.empty() &&
+        transfer_encoding.current_coding().coding == "chunked";
 }
 
 void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder& holder) {
