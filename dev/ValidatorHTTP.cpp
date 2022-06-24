@@ -209,3 +209,29 @@ bool    HTTP::Validator::is_ls32(const light_string& str) {
     if (sep == light_string::npos) { return false; }
     return is_h16(str.substr(0, sep)) && is_h16(str.substr(sep + 1));
 }
+
+bool    HTTP::Validator::is_valid_rank(const light_string& str) {
+    const light_string integral = str.substr_before(".");
+    if (integral.size() != 1) {
+        // 整数部なし
+        DXOUT("[KO] no integral: " << integral);
+        return false;
+    }
+    if (!isdigit(integral.cat(0))) {
+        // 整数部に数字以外がある
+        DXOUT("[KO] non-digit in integral: " << integral);
+        return false;
+    }
+    const light_string fraction = str.substr_after(".", integral.size());
+    if (fraction.size() > 3) {
+        // 小数部が長い
+        DXOUT("[KO] long fraction: " << fraction);
+        return false;
+    }
+    if (fraction.find_first_not_of(HTTP::CharFilter::digit) != light_string::npos) {
+        // 小数部に数字以外がある
+        DXOUT("[KO] non-digit in fraction: " << fraction);
+        return false;
+    }
+    return true;
+}

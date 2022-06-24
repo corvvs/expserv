@@ -19,6 +19,9 @@ namespace HTTP {
         bool    is_port(const HTTP::light_string& str);
         bool    is_h16(const HTTP::light_string& str);
         bool    is_ls32(const HTTP::light_string& str);
+
+        // rank: 小数点以下10進3桁以内, 0以上1以下の実数.
+        bool    is_valid_rank(const HTTP::light_string& str);
     }
 }
 

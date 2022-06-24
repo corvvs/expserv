@@ -295,6 +295,7 @@ void    RequestHTTP::extract_control_headers() {
     cp.determine_transfer_encoding(header_holder);
     cp.determine_body_size(header_holder);
     cp.determine_connection(header_holder);
+    cp.determine_te(header_holder);
 }
 
 void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
@@ -398,7 +399,7 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
             DXOUT("tc_lstr: \"" << tc_lstr << "\"");
             HTTP::Term::TransferCoding  tc;
             tc.coding = tc_lstr.str();
-            transfer_encoding.tranfer_codings.push_back(tc);
+            transfer_encoding.transfer_codings.push_back(tc);
             
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
@@ -413,7 +414,7 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
                 val_lstr = val_lstr.substr(1);
             } else if (val_lstr.cat(0) == ';') {
                 // parameterがはじまる
-                val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.tranfer_codings.back());
+                val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.transfer_codings.back());
             } else {
                 // 不正な要素
                 DXOUT("[KO] unexpected state: \"" << val_lstr.substr(0) << "\"");
@@ -473,8 +474,14 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
 }
 
 void    RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder& holder) {
+    // Connection        = 1#connection-option
+    // connection-option = token
     const HeaderHTTPHolder::value_list_type *cons = holder.get_vals(HeaderHTTP::connection);
     if (!cons) { return; }
+    if (cons->size() == 0) {
+        DXOUT("[KO] list exists, but it's empty.");
+        return;
+    }
     for (HeaderHTTPHolder::value_list_type::const_iterator it = cons->begin(); it != cons->end(); ++it) {
         light_string    val_lstr = light_string(*it);
         for (;;) {
@@ -521,6 +528,86 @@ void    RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder&
     DXOUT("close: " << connection.will_close() << ", keep-alive: " << connection.will_keep_alive());
 }
 
+void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
+    // https://triple-underscore.github.io/RFC7230-ja.html#header.te
+    // TE        = #t-codings
+    // t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
+    // t-ranking = OWS ";" OWS "q=" rank
+    // rank      = ( "0" [ "." 0*3DIGIT ] )
+    //           / ( "1" [ "." 0*3("0") ] )
+    // transfer-coding    = "chunked"
+    //                    / "compress"
+    //                    / "deflate"
+    //                    / "gzip"
+    //                    / transfer-extension
+    // transfer-extension = token *( OWS ";" OWS transfer-parameter )
+    // transfer-parameter = token BWS "=" BWS ( token / quoted-string )
+
+    const HeaderHTTPHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::te);
+    if (!tes) { return; }
+    for (HeaderHTTPHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
+        light_string    val_lstr = light_string(*it);
+        for (;;) {
+            DXOUT("val_lstr: \"" << val_lstr << "\"");
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+            if (val_lstr.size() == 0) {
+                DXOUT("away; sp only.");
+                break;
+            }
+            light_string tc_lstr = val_lstr.substr_while(HTTP::CharFilter::tchar);
+            if (tc_lstr.size() == 0) {
+                DXOUT("away; no value.");
+                break;
+            }
+
+            // 本体
+            DXOUT("tc_lstr: \"" << tc_lstr << "\"");
+            HTTP::Term::TransferCoding  tc = HTTP::Term::TransferCoding::init();
+            tc.coding = tc_lstr.str();
+            te.transfer_codings.push_back(tc);
+            
+            // 後続
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
+            if (val_lstr.size() == 0) {
+                DXOUT("away");
+                break;
+            }
+
+            DXOUT("val_lstr.cat(0): " << val_lstr.cat(0));
+            HTTP::Term::TransferCoding& last_coding = te.transfer_codings.back();
+            if (val_lstr.cat(0) == ';') {
+                // parameterがはじまる
+                val_lstr = decompose_semicoron_separated_kvlist(val_lstr, last_coding);
+            }
+
+            // rankがあるなら, それはセミコロン分割リストの一部として解釈されるはず -> q 値をチェック.
+            if (!te.transfer_codings.empty()) {
+                HTTP::IDictHolder::parameter_dict::iterator qit
+                    = last_coding.parameters.find("q");
+                if (qit != last_coding.parameters.end()) {
+                    DXOUT("rank: \"" << qit->second << "\"");
+                    if (HTTP::Validator::is_valid_rank(qit->second)) {
+                        DXOUT("rank is valid: " << qit->second);
+                        DXOUT("q: " << last_coding.quality_int);
+                        last_coding.quality_int = ParserHelper::quality_to_u(qit->second);
+                        DXOUT("q -> " << last_coding.quality_int);
+                    } else {
+                        DXOUT("rank is INVALID: " << qit->second);
+                    }
+                }
+            }
+
+            if (val_lstr.cat(0) == ',') {
+                // 次の要素
+                val_lstr = val_lstr.substr(1);
+            } else {
+                // 不正な要素
+                DXOUT("[KO] unexpected state: \"" << val_lstr.substr(0) << "\"");
+                break;
+            }
+        }
+    }
+}
 
 RequestHTTP::light_string
     RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(
@@ -576,7 +663,7 @@ RequestHTTP::light_string
                 light_string::size_type i = 1;
                 bool    quoted = false;
                 for(;i < value_str.size(); ++i) {
-                    const uint8_t c = value_str[i];
+                    const HTTP::byte_type c = value_str[i];
                     if (!quoted && HTTP::CharFilter::dquote.includes(c)) {
                         // クオートされてないダブルクオート
                         // -> ここで終わり

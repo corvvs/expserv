@@ -60,6 +60,10 @@ namespace ParserHelper {
     unsigned int    stou(const byte_string& str);
     unsigned int    stou(const HTTP::light_string& str);
     byte_string     utos(unsigned int u);
+
+    // quality("q=0.05" の右辺側みたいな形式の文字列)を1000倍したunsigned intに変換
+    // qualityとしてvalidなもののみ渡すこと.
+    unsigned int    quality_to_u(HTTP::light_string& quality);
 }
 
 #endif

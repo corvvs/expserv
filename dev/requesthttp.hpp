@@ -38,7 +38,7 @@ public:
     static const size_t MAX_REQLINE_END = 8192;
     typedef HTTP::byte_string               byte_string;
     // 他の byte_string の一部分を参照する軽量 string
-    typedef LightString<HTTP::byte_type>    light_string;
+    typedef LightString<HTTP::char_type>    light_string;
     typedef std::map<byte_string, light_string>
                                             header_dict_type;
     typedef HeaderHTTPItem::header_val_type header_val_type;
@@ -65,15 +65,18 @@ public:
         HTTP::CH::ContentType           content_type;
         HTTP::CH::TransferEncoding      transfer_encoding;
         HTTP::CH::Connection            connection;
+        HTTP::CH::TE                    te;
 
         // いろいろ抽出関数群
 
+        // TODO: struct に結びつくやつは struct に移したほうがいいかも
         void    determine_host(const HeaderHTTPHolder& holder);
         void    determine_transfer_encoding(const HeaderHTTPHolder& holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
         void    determine_body_size(const HeaderHTTPHolder& holder);
         void    determine_content_type(const HeaderHTTPHolder& holder);
         void    determine_connection(const HeaderHTTPHolder& holder);
+        void    determine_te(const HeaderHTTPHolder& holder);
         
 
         // "セミコロン分割key-valueリスト" をパースして辞書に詰める

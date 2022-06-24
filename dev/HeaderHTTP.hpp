@@ -77,7 +77,7 @@ class HeaderHTTPHolder {
 public:
     typedef HTTP::header_key_type                       header_key_type;
     typedef HTTP::header_val_type                       header_val_type;
-    typedef LightString<HTTP::byte_type>                light_string;
+    typedef LightString<HTTP::char_type>                light_string;
     typedef HeaderHTTPItem                              header_item_type;
     // なぜ vector などではなく list を使うのかというと, 再確保を防ぐため.
     // 再確保を防ぐのは, dict で HeaderHTTPItem のポインタを保持するから.

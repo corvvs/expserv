@@ -164,3 +164,21 @@ ParserHelper::byte_string   ParserHelper::utos(unsigned int u) {
     ss << u;
     return ss.str();
 }
+
+unsigned int    ParserHelper::quality_to_u(HTTP::light_string& quality) {
+    unsigned int v = 0;
+    unsigned int j = 0;
+    for (int i = 0; i < 4;) {
+        if (j < quality.size()) {
+            if (isdigit(quality.cat(j))) {
+                v = v * 10 + quality.cat(j) - '0';
+                ++i;
+            }
+            ++j;
+        } else {
+            v = v * 10;
+            ++i;
+        }
+    }
+    return v;
+}
