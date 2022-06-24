@@ -23,6 +23,7 @@ namespace HeaderHTTP {
     const std::string transfer_encoding = "transfer-encoding";
     const std::string te                = "te";
     const std::string vary              = "vary";
+    const std::string upgrade           = "upgrade";
 }
 
 // あるヘッダキーの属性

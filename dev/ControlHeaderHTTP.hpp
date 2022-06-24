@@ -23,7 +23,14 @@ namespace HTTP {
         struct TransferCoding: public IDictHolder {
             byte_string                 coding;
             IDictHolder::parameter_dict parameters;
+            unsigned int                quality_int; // q の値(あれば)を1000倍したもの
             void store_list_item(const parameter_key_type& key, const parameter_value_type& val);
+            static TransferCoding   init();
+        };
+
+        struct Protocol {
+            light_string name;
+            light_string version;
         };
     }
 
@@ -34,20 +41,16 @@ namespace HTTP {
         typedef std::map<parameter_key_type,
                                     parameter_value_type> parameter_dict;
 
-        // Host
         struct Host {
             // Host: の値全体
             HTTP::byte_string   value;
-            // Host: のホスト部分
             HTTP::byte_string   host;
-            // Host: のポート部分; 未指定なら空文字列
             HTTP::byte_string   port;
         };
 
-        // Transfer-Encoding
         struct TransferEncoding {
             // 指定されたTransferCodingが登場順に入る.
-            std::vector<HTTP::Term::TransferCoding> tranfer_codings;
+            std::vector<HTTP::Term::TransferCoding> transfer_codings;
             // 現在のTransferCodingが "chunked" かどうか.
             bool                                    currently_chunked;
 
@@ -57,7 +60,6 @@ namespace HTTP {
             const Term::TransferCoding& current_coding() const;
         };
 
-        // Content-Type
         struct ContentType: public IDictHolder {
 
             HTTP::byte_string   value;
@@ -76,6 +78,14 @@ namespace HTTP {
 
             bool    will_keep_alive() const;
             bool    will_close() const;
+        };
+
+        struct TE {
+            std::vector<HTTP::Term::TransferCoding> transfer_codings;
+        };
+
+        struct Upgrade {
+            std::vector<HTTP::Term::Protocol> protocols;
         };
     }
 }

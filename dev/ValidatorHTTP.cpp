@@ -217,7 +217,7 @@ bool    HTTP::Validator::is_valid_rank(const light_string& str) {
         DXOUT("[KO] no integral: " << integral);
         return false;
     }
-    if (!isdigit(integral.cat(0))) {
+    if (!isdigit(integral[0])) {
         // 整数部に数字以外がある
         DXOUT("[KO] non-digit in integral: " << integral);
         return false;

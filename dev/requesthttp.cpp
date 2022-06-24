@@ -296,6 +296,7 @@ void    RequestHTTP::extract_control_headers() {
     cp.determine_body_size(header_holder);
     cp.determine_connection(header_holder);
     cp.determine_te(header_holder);
+    cp.determine_upgrade(header_holder);
 }
 
 void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
@@ -408,11 +409,11 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
                 break;
             }
             // cat(sp_end) が "," か ";" かによって分岐
-            DXOUT("val_lstr.cat(0): " << val_lstr.cat(0));
-            if (val_lstr.cat(0) == ',') {
+            DXOUT("val_lstr[0]: " << val_lstr[0]);
+            if (val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
-            } else if (val_lstr.cat(0) == ';') {
+            } else if (val_lstr[0] == ';') {
                 // parameterがはじまる
                 val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.transfer_codings.back());
             } else {
@@ -514,8 +515,8 @@ void    RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder&
                 break;
             }
             // cat(sp_end) が "," か ";" かによって分岐
-            DXOUT("val_lstr.cat(0): " << val_lstr.cat(0));
-            if (val_lstr.cat(0) == ',') {
+            DXOUT("val_lstr[0]: " << val_lstr[0]);
+            if (val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
             } else {
@@ -573,9 +574,9 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
                 break;
             }
 
-            DXOUT("val_lstr.cat(0): " << val_lstr.cat(0));
+            DXOUT("val_lstr[0]: " << val_lstr[0]);
             HTTP::Term::TransferCoding& last_coding = te.transfer_codings.back();
-            if (val_lstr.cat(0) == ';') {
+            if (val_lstr[0] == ';') {
                 // parameterがはじまる
                 val_lstr = decompose_semicoron_separated_kvlist(val_lstr, last_coding);
             }
@@ -597,7 +598,7 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
                 }
             }
 
-            if (val_lstr.cat(0) == ',') {
+            if (val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
             } else {
@@ -605,6 +606,49 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
                 DXOUT("[KO] unexpected state: \"" << val_lstr.substr(0) << "\"");
                 break;
             }
+        }
+    }
+}
+
+void RequestHTTP::ControlParams::determine_upgrade(const HeaderHTTPHolder& holder) {
+    // Upgrade          = 1#protocol
+    // protocol         = protocol-name ["/" protocol-version]
+    // protocol-name    = token
+    // protocol-version = token
+    const HeaderHTTPHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::upgrade);
+    if (!elems) { return; }
+    for (HeaderHTTPHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
+        light_string    val_lstr = light_string(*it);
+        for (;val_lstr.size() > 0;) {
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+            light_string name = val_lstr.substr_while(HTTP::CharFilter::tchar);
+            if (name.size() == 0) {
+                // 値なし
+                DXOUT("[KO] no name");
+                break;
+            }
+            HTTP::Term::Protocol    protocol;
+            protocol.name = name;
+            val_lstr = val_lstr.substr(name.size());
+            if (val_lstr.size() > 0 && val_lstr[0] == '/') {
+                // versionがある
+                light_string version = val_lstr.substr_while(HTTP::CharFilter::tchar, 1);
+                if (version.size() == 0) {
+                    // 値なし
+                    DXOUT("[KO] no version after slash");
+                } else {
+                    protocol.version = version;
+                }
+                val_lstr = val_lstr.substr(1 + version.size());
+            }
+            DXOUT("protocol: " << protocol.name.qstr() << " - " << protocol.version.qstr());
+            upgrade.protocols.push_back(protocol);
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+            if (val_lstr.size() == 0 || val_lstr[0] != ',') {
+                DXOUT("away");
+                break;
+            }
+            val_lstr = val_lstr.substr(1);
         }
     }
 }
@@ -624,7 +668,7 @@ RequestHTTP::light_string
             DXOUT("away, there's only sp.");
             return params_str;
         }
-        if (params_str.cat(0) != ';') {
+        if (params_str[0] != ';') {
             DXOUT("away");
             return params_str;
         }
@@ -637,7 +681,7 @@ RequestHTTP::light_string
         // ここからparameterを取得
         // token
         const light_string key_lstr = params_str.substr_while(HTTP::CharFilter::tchar);
-        if (key_lstr.size() == params_str.size() || params_str.cat(key_lstr.size()) != '=') {
+        if (key_lstr.size() == params_str.size() || params_str[key_lstr.size()] != '=') {
             DXOUT("[KO] no equal");
             return params_str.substr(params_str.size());
         }

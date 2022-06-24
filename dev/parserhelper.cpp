@@ -170,8 +170,8 @@ unsigned int    ParserHelper::quality_to_u(HTTP::light_string& quality) {
     unsigned int j = 0;
     for (int i = 0; i < 4;) {
         if (j < quality.size()) {
-            if (isdigit(quality.cat(j))) {
-                v = v * 10 + quality.cat(j) - '0';
+            if (isdigit(quality[j])) {
+                v = v * 10 + quality[j] - '0';
                 ++i;
             }
             ++j;

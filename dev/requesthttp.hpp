@@ -66,6 +66,7 @@ public:
         HTTP::CH::TransferEncoding      transfer_encoding;
         HTTP::CH::Connection            connection;
         HTTP::CH::TE                    te;
+        HTTP::CH::Upgrade               upgrade;
 
         // いろいろ抽出関数群
 
@@ -77,6 +78,7 @@ public:
         void    determine_content_type(const HeaderHTTPHolder& holder);
         void    determine_connection(const HeaderHTTPHolder& holder);
         void    determine_te(const HeaderHTTPHolder& holder);
+        void    determine_upgrade(const HeaderHTTPHolder& holder);
         
 
         // "セミコロン分割key-valueリスト" をパースして辞書に詰める

@@ -2,17 +2,22 @@
 
 void    HTTP::Term::TransferCoding::store_list_item(const parameter_key_type& key, const parameter_value_type& val) {
     parameters[key] = val;
+    DXOUT("\"" << key << "\" << \"" << parameters[key] << "\"");
 }
 
-
+HTTP::Term::TransferCoding  HTTP::Term::TransferCoding::init() {
+    HTTP::Term::TransferCoding o;
+    o.quality_int = 0;
+    return o;
+}
 
 bool    HTTP::CH::TransferEncoding::empty() const {
-    return tranfer_codings.empty();
+    return transfer_codings.empty();
 }
 
 const HTTP::Term::TransferCoding&
     HTTP::CH::TransferEncoding::current_coding() const {
-    return tranfer_codings.back();
+    return transfer_codings.back();
 }
 
 const HTTP::byte_string  HTTP::CH::ContentType::default_value = "application/octet-stream";
