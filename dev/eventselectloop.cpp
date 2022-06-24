@@ -99,11 +99,11 @@ void    EventSelectLoop::loop() {
 
         int count = select( max_fd + 1, &read_set, &write_set, &exception_set, &tv);
         if (count < 0) {
-            DSOUT() << strerror(errno) << std::endl;
+            DXOUT(strerror(errno));
             throw std::runtime_error("select error");
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
-            DSOUT() << "timeout?: " << now << std::endl;
+            DXOUT("timeout?: " << now);
             scan_fd_set(read_map, &read_set, now);
             scan_fd_set(write_map, &write_set, now);
             scan_fd_set(exception_map, &exception_set, now);

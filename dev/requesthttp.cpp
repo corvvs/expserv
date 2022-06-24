@@ -131,7 +131,7 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
 }
 
 bool    RequestHTTP::seek_reqline_start(size_t len) {
-    DSOUT() << "* determining start_of_reqline... *" << std::endl;
+    DXOUT("* determining start_of_reqline... *");
     size_t s_o_s = ParserHelper::ignore_crlf(bytebuffer, mid, len);
     mid += s_o_s;
     if (s_o_s == len) {
@@ -174,30 +174,29 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
             // HTTP/1.*?
 
             cp.http_method = discriminate_request_method(splitted[0].begin(), splitted[0].end());
-            DSOUT() << splitted[0] << " -> http_method: " << cp.http_method << std::endl;
+            DXOUT(splitted[0] << " -> http_method: " << cp.http_method);
             cp.request_path = splitted[1];
-            DSOUT() << "request_path: " << cp.request_path << std::endl;
+            DXOUT("request_path: " << cp.request_path);
             if (splitted.size() == 3) {
                 cp.http_version = discriminate_request_version(splitted[2].begin(), splitted[2].end());
             } else {
                 cp.http_version = HTTP::V_0_9;
             }
-            DSOUT() << splitted[2] << " -> http_version: " << cp.http_version << std::endl;
+            DXOUT(splitted[2] << " -> http_version: " << cp.http_version);
             break;
         }
         default:
             throw http_error("invalid request-line?", HTTP::STATUS_BAD_REQUEST);
     }
-    DSOUT() << "* parsed reqline *" << std::endl;
+    DXOUT("* parsed reqline *");
     start_of_current_header = mid;
 }
 
 void    RequestHTTP::parse_header_lines(const byte_string& bytebuffer, ssize_t from, ssize_t len) {
-    DSOUT()
-        << "\"\"\"" << std::endl
+    DXOUT("\"\"\"" << std::endl
         << byte_string(bytebuffer.begin() + from, bytebuffer.begin() + from + len)
         << std::endl
-        << "\"\"\"" << std::endl;
+        << "\"\"\"");
     ssize_t movement = 0;
     while(true) {
         IndexRange res = ParserHelper::find_crlf_header_value(bytebuffer, from + movement, len - movement);
@@ -269,20 +268,18 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
             }
             sval.append(pval, movement, res.first - movement);
             sval.append(ParserHelper::SP);
-            DSOUT() << "found obs-fold: " << res << std::endl;
+            DXOUT("found obs-fold: " << res);
             ps.found_obs_fold = true;
             movement = res.second;
         }
         // DSOUT() << "sval: \"" << sval << "\"" << std::endl;
     }
 
-    DSOUT()
-        << "* splitted a header *"
+    DXOUT("* splitted a header *"
         << std::endl
         << "Key: " << key
         << std::endl
-        << "Val: " << sval
-        << std::endl;
+        << "Val: " << sval);
     header_holder.add_item(key, sval);
 }
 
@@ -468,10 +465,10 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
     DXOUT("content_type.value: " << content_type.value);
 
     // media-type     = type "/" subtype *( OWS ";" OWS parameter )
-    light_string    parameters_str(lct, subtype_end);
-    light_string    continuation = decompose_semicoron_separated_kvlist(parameters_str, content_type);
-    DXOUT("parameter: " << content_type.parameters.size());
-    DXOUT("continuation: \"" << continuation << "\"");
+    // light_string    parameters_str(lct, subtype_end);
+    // light_string    continuation = decompose_semicoron_separated_kvlist(parameters_str, content_type);
+    // DXOUT("parameter: " << content_type.parameters.size());
+    // DXOUT("continuation: \"" << continuation << "\"");
 }
 
 void    RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder& holder) {

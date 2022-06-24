@@ -26,7 +26,7 @@ IndexRange ParserHelper::find_crlf_header_value(const byte_string& str, ssize_t 
             // is obs-fold ?
             // DSOUT() << "is obs-fold?? " << r << std::endl;
             if (r.second < from + len && is_sp(str[r.second])) {
-                DSOUT() << "is obs-fold!!" << std::endl;
+                DXOUT("is obs-fold!!");
                 movement = r.second - from;
                 continue;
             }
@@ -46,7 +46,7 @@ IndexRange ParserHelper::find_obs_fold(const byte_string& str, ssize_t from, ssi
         if (!r.is_invalid()) {
             ssize_t i;
             for (i = 0; r.second + i < from + len && is_sp(str[r.second + i]); ++i);
-            DSOUT() << r << " i: " << i << std::endl;
+            DXOUT(r << " i: " << i);
             if (i < 1) {
                 // from + movement = r.second
                 movement = r.second - from;

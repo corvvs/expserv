@@ -28,7 +28,7 @@ Connection::Connection(
     latest_operated_at(0)
 {
     started_ = started++;
-    DSOUT() << "started_: " << started_ << std::endl;
+    DXOUT("started_: " << started_);
     touch();
 }
 
@@ -36,7 +36,7 @@ Connection::~Connection() {
     delete sock;
     delete current_req;
     delete current_res;
-    DSOUT() << "finished: " << finished++ << " - " << started_ << std::endl;
+    DXOUT("finished: " << finished++ << " - " << started_);
 }
 
 t_fd    Connection::get_fd() const {
@@ -78,7 +78,7 @@ case CONNECTION_RECEIVING: {
     } catch (http_error err) {
 
         // 受信中のHTTPエラー
-        DSOUT() << err.get_status() << ":" << err.what() << std::endl;
+        DXOUT(err.get_status() << ":" << err.what());
         current_res = router_->respond_error(current_req, err);
         ready_sending(observer);
 
@@ -122,7 +122,7 @@ case CONNECTION_RESPONDING: {
     } catch (http_error err) {
 
         // 送信中のHTTPエラー -> もうだめ
-        DSOUT() << err.get_status() << ":" << err.what() << std::endl;
+        DXOUT(err.get_status() << ":" << err.what());
         die(observer);
 
     }
@@ -140,7 +140,7 @@ case CONNECTION_SHUTTING_DOWN: {
 
     } catch (http_error err) {
 
-        DSOUT() << err.get_status() << ":" << err.what() << std::endl;
+        DXOUT(err.get_status() << ":" << err.what());
         die(observer);
 
     }
@@ -148,7 +148,7 @@ case CONNECTION_SHUTTING_DOWN: {
 }
 
 default: {
-    DSOUT() << "unexpected phase: " << phase << std::endl;
+    DXOUT("unexpected phase: " << phase);
     throw std::runtime_error("????");
 }
 }
@@ -158,13 +158,13 @@ void    Connection::timeout(IObserver& observer, t_time_epoch_ms epoch) {
     if (dying) { return; }
     if (epoch < attr.timeout + latest_operated_at) { return; }
     // タイムアウト処理
-    DSOUT() << "timeout!!: " << get_fd() << std::endl;
+    DXOUT("timeout!!: " << get_fd());
     die(observer);
 }
 
 void    Connection::touch() {
     t_time_epoch_ms t = WSTime::get_epoch_ms();
-    DSOUT() << "operated_at: " << latest_operated_at << " -> " << t << std::endl;
+    DXOUT("operated_at: " << latest_operated_at << " -> " << t);
     latest_operated_at = t;
 }
 

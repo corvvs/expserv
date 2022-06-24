@@ -31,7 +31,7 @@ void    EventPollLoop::loop() {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
                 int i = indexmap[it->first];
                 if (fds[i].fd >= 0 && fds[i].revents) {
-                    std::cout << "[S]FD-" << it->first << ": revents: " << fds[i].revents << std::endl;
+                    DXOUT("[S]FD-" << it->first << ": revents: " << fds[i].revents);
                     it->second->notify(*this);
                 }
             }
@@ -41,18 +41,17 @@ void    EventPollLoop::loop() {
 
 void    EventPollLoop::debug_monitor() {
     // 監視状態の表示
-    std::cout << "[S] polling count: " << nfds << std::endl;
-    std::cout << "[S]";
-    for (fd_vector::iterator it = fds.begin(); it != fds.end(); it++) {
-        std::cout << " ";
-        if (it->fd >= 0) {
-            std::cout << it->fd;
-        } else {
-            std::cout << "xx";
-        }
-        std::cout << ":" << it->events;
-    }
-    std::cout << std::endl;
+    DXOUT("polling count: " << nfds);
+    // for (fd_vector::iterator it = fds.begin(); it != fds.end(); it++) {
+    //     std::cout << " ";
+    //     if (it->fd >= 0) {
+    //         std::cout << it->fd;
+    //     } else {
+    //         std::cout << "xx";
+    //     }
+    //     std::cout << ":" << it->events;
+    // }
+    // std::cout << std::endl;
 }
 
 void    EventPollLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {

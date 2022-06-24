@@ -45,7 +45,7 @@ HeaderHTTPItem::HeaderHTTPItem(const header_key_type& key):
 void    HeaderHTTPItem::add_val(const header_val_type& val) {
     if (values.size() > 0) {
         // すでにvalueがある場合 -> 必要に応じてしかるべく処理する
-        DSOUT() << "* MULTIPLE VALUES * " << values.size() << std::endl;
+        DXOUT("* MULTIPLE VALUES * " << values.size());
     }
     values.push_back(val);
 }

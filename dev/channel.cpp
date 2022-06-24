@@ -39,7 +39,7 @@ void    Channel::notify(IObserver& observer) {
             observer.reserve_set(new Connection(router_, connected), SHMT_READ);
         }
     } catch (...) {
-        DSOUT() << "[!!!!] failed to accept socket: fd: " << sock->get_fd() << std::endl;
+        DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd());
     }
 }
 
@@ -47,7 +47,7 @@ void    Channel::timeout(IObserver& observer, t_time_epoch_ms epoch) {
     // * DO NOTHING *
     (void)observer;
     (void)epoch;
-    DSOUT() << "* DO NOTHING *: " << get_fd() << std::endl;
+    DXOUT("* DO NOTHING *: " << get_fd());
 }
 
 Channel::t_channel_id   Channel::get_id() const {
