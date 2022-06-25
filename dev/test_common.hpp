@@ -10,7 +10,11 @@
 # else
 #  define DXOUT(expr) do { debug_out(__FILE__, __LINE__, __func__) << expr << std::endl; } while(0)
 #  define DXERR(expr) do { debug_err(__FILE__, __LINE__, __func__) << expr << std::endl; } while(0)
-#endif
+# endif
+// 変数の中身の表示
+# define VOUT(expr) DXOUT(#expr ": " << expr)
+// 変数の中身の表示(クオート付き)
+# define QVOUT(expr) DXOUT(#expr ": \"" << expr << "\"")
 
 std::ostream&   debug_out(
     const char *filename,

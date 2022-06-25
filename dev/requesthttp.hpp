@@ -67,6 +67,7 @@ public:
         HTTP::CH::Connection            connection;
         HTTP::CH::TE                    te;
         HTTP::CH::Upgrade               upgrade;
+        HTTP::CH::Via                   via;
 
         // いろいろ抽出関数群
 
@@ -79,11 +80,17 @@ public:
         void    determine_connection(const HeaderHTTPHolder& holder);
         void    determine_te(const HeaderHTTPHolder& holder);
         void    determine_upgrade(const HeaderHTTPHolder& holder);
+        void    determine_via(const HeaderHTTPHolder& holder);
         
-
+        // `lhost`の中身を`Host`構造体に詰める.
+        // `lhost`はHost:ヘッダとしてvalidでなければならない.
+        void    pack_host(HTTP::Term::Host& host_item, const light_string& lhost);
         // "セミコロン分割key-valueリスト" をパースして辞書に詰める
         // その後, パースできた部分以降を返す
         light_string    decompose_semicoron_separated_kvlist(const light_string& list_str, HTTP::IDictHolder& holder);
+
+        // HTTP における`comment`を取り出す.
+        light_string    extract_comment(const light_string& str);
     };
 
 private:

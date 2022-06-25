@@ -294,6 +294,7 @@ void    RequestHTTP::extract_control_headers() {
     cp.determine_connection(header_holder);
     cp.determine_te(header_holder);
     cp.determine_upgrade(header_holder);
+    cp.determine_via(header_holder);
 }
 
 void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
@@ -343,26 +344,7 @@ void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holde
     if (!HTTP::Validator::is_valid_header_host(lhost)) {
         throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
     }
-    header_host.value = lhost.get_base();
-    // この時点で lhost は Host: として妥当
-    // -> 1文字目が [ かどうかで ipv6(vfuture) かどうかを判別する.
-    if (lhost[0] == '[') {
-        // ipv6 or ipvfuture
-        HTTP::light_string::size_type i = lhost.find_last_of("]");
-        header_host.host = lhost.substr(0, i + 1).str();
-        if (i + 1 < lhost.size()) {
-            header_host.port = lhost.substr(i + 2).str();
-        }
-    } else {
-        // ipv4 or reg-name
-        HTTP::light_string::size_type i = lhost.find_last_of(":");
-        header_host.host = lhost.substr(0, i).str();
-        if (i != HTTP::light_string::npos) {
-            header_host.port = lhost.substr(i + 1).str();
-        }
-    }
-    DXOUT("host: \"" << header_host.host << "\"");
-    DXOUT("port: \"" << header_host.port << "\"");
+    pack_host(header_host, lhost);
 }
 
 void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHolder& holder) {
@@ -650,6 +632,99 @@ void RequestHTTP::ControlParams::determine_upgrade(const HeaderHTTPHolder& holde
     }
 }
 
+void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder& holder) {
+    // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
+    // received-protocol = [ protocol-name "/" ] protocol-version
+    // received-by       = ( uri-host [ ":" port ] ) / pseudonym
+    // pseudonym         = token            
+    // protocol-name     = token
+    // protocol-version  = token
+    const HeaderHTTPHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::via);
+    if (!elems) { return; }
+    for (HeaderHTTPHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
+        light_string    val_lstr = light_string(*it);
+        for (;;) {
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+            DXOUT("val_lstr: " << val_lstr.qstr());
+            if (val_lstr.size() == 0) { break; }
+            const light_string p1 = val_lstr.substr_while(HTTP::CharFilter::tchar);
+            DXOUT("p1: " << p1.qstr());
+            if (p1.size() == 0) {
+                DXOUT("[KO] zero-width token(1): " << val_lstr.qstr());
+                break;
+            }
+            val_lstr = val_lstr.substr(p1.size());
+            DXOUT("val_lstr: " << val_lstr.qstr());
+            light_string p2;
+            if (val_lstr.size() > 0 && val_lstr[0] != ' ') {
+                if (val_lstr[0] != '/') {
+                    DXOUT("[KO] invalid separator: " << val_lstr.qstr());
+                    break;
+                }
+                p2 = val_lstr.substr_while(HTTP::CharFilter::tchar, 1);
+                val_lstr = val_lstr.substr(1 + p2.size());
+            }
+            DXOUT("val_lstr: " << val_lstr.qstr());
+            DXOUT("p2: " << p2.qstr());
+            HTTP::Term::Received    r;
+            HTTP::Term::Protocol&   p = r.protocol;
+            if (p2.size() == 0) {
+                p.version = p1;
+            } else {
+                p.name = p1;
+                p.version = p2;
+            }
+            DXOUT("protocol: name=" << p.name.qstr() << ", version=" << p.version.qstr());
+            light_string rws = val_lstr.substr_while(HTTP::CharFilter::sp);
+            if (rws.size() >= 1) {
+                val_lstr = val_lstr.substr(rws.size());
+                light_string by = val_lstr.substr_before(HTTP::CharFilter::sp | ",");
+                DXOUT("by: " << by.qstr());
+                bool is_valid_as_uri_host =  HTTP::Validator::is_uri_host(by);
+                if (!is_valid_as_uri_host) {
+                    DXOUT("[KO] not valid as host: " << by.qstr());
+                    break;
+                }
+                pack_host(r.host, by);
+                val_lstr = val_lstr.substr(by.size());
+            }
+            via.receiveds.push_back(r);
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+            DXOUT("val_lstr: " << val_lstr.qstr() << ", " << (val_lstr.size() > 0 && val_lstr[0] == ','));
+            if (val_lstr.size() > 0 && val_lstr[0] == ',') {
+                val_lstr = val_lstr.substr(1);
+                continue;
+            }
+            break;
+        }
+    }
+}
+
+void    RequestHTTP::ControlParams::pack_host(HTTP::Term::Host& host_item, const light_string& lhost) {
+    host_item.value = lhost.str();
+    // この時点で lhost は Host: として妥当
+    // -> 1文字目が [ かどうかで ipv6(vfuture) かどうかを判別する.
+    if (lhost[0] == '[') {
+        // ipv6 or ipvfuture
+        const light_string host = lhost.substr_before("]", 1);
+        host_item.host = host.str();
+        if (host.size() < lhost.size()) {
+            host_item.port = lhost.substr(1 + host.size() + 2).str();
+        }
+    } else {
+        // ipv4 or reg-name
+        const light_string host = lhost.substr_before(":");
+        host_item.host = host.str();
+        if (host.size() < lhost.size()) {
+            light_string port = lhost.substr(host.size() + 1);
+            host_item.port = port.str();
+        }
+    }
+    DXOUT("host: \"" << host_item.host << "\"");
+    DXOUT("port: \"" << host_item.port << "\"");
+}
+
+
 RequestHTTP::light_string
     RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(
         const light_string& kvlist_str,
@@ -710,7 +785,7 @@ RequestHTTP::light_string
                         // -> ここで終わり
                         break;
                     }
-                    if (quoted && !HTTP::CharFilter::quoted_right.includes(c)) {
+                    if (quoted && !HTTP::CharFilter::qdright.includes(c)) {
                         // クオートの右がquoted_rightではない
                         // -> 不適格
                         DXOUT("[KO] not suitable for quote");
@@ -745,6 +820,9 @@ RequestHTTP::light_string
     return list_str;
 }
 
+// RequestHTTP::light_string   RequestHTTP::ControlParams::extract_comment(const light_string& str) {
+    
+// }
 
 bool    RequestHTTP::is_ready_to_navigate() const {
     return parse_progress >= PARSE_REQUEST_BODY;

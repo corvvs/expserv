@@ -170,7 +170,7 @@ bool    HTTP::Validator::is_reg_name(const light_string& str) {
     // unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
     // pct-encoded   = "%" HEXDIG HEXDIG
     // sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
-    //              / "*" / "+" / "," / ";" / "="
+    //               / "*" / "+" / "," / ";" / "="
     const CharFilter& hexdig = CharFilter::hexdig;
     const CharFilter filter_others = CharFilter::unreserved | CharFilter::sub_delims | ":";
     for (light_string::size_type i = 0; i < str.length();) {

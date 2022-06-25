@@ -28,9 +28,21 @@ namespace HTTP {
             static TransferCoding   init();
         };
 
+        struct Host {
+            // Host: の値全体
+            HTTP::byte_string   value;
+            HTTP::byte_string   host;
+            HTTP::byte_string   port;
+        };
+
         struct Protocol {
             light_string name;
             light_string version;
+        };
+
+        struct Received {
+            Protocol    protocol;
+            Host        host;
         };
     }
 
@@ -41,12 +53,7 @@ namespace HTTP {
         typedef std::map<parameter_key_type,
                                     parameter_value_type> parameter_dict;
 
-        struct Host {
-            // Host: の値全体
-            HTTP::byte_string   value;
-            HTTP::byte_string   host;
-            HTTP::byte_string   port;
-        };
+        typedef HTTP::Term::Host    Host;
 
         struct TransferEncoding {
             // 指定されたTransferCodingが登場順に入る.
@@ -86,6 +93,10 @@ namespace HTTP {
 
         struct Upgrade {
             std::vector<HTTP::Term::Protocol> protocols;
+        };
+
+        struct Via {
+            std::vector<HTTP::Term::Received>   receiveds;
         };
     }
 }

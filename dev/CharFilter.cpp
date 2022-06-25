@@ -168,13 +168,23 @@ const HTTP::CharFilter HTTP::CharFilter::dquote     = "\"";
 const HTTP::CharFilter HTTP::CharFilter::bslash     = "\\";
 const HTTP::CharFilter HTTP::CharFilter::obs_text   = HTTP::CharFilter(0x80, 0xff);
 const HTTP::CharFilter HTTP::CharFilter::vchar      = HTTP::CharFilter(0x21, 0x7e);
-const HTTP::CharFilter HTTP::CharFilter::qdtext     = HTTP::CharFilter::vchar | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text - "\"\\";
-const HTTP::CharFilter HTTP::CharFilter::quoted_right = HTTP::CharFilter::vchar | " \t" | HTTP::CharFilter::obs_text;
+const HTTP::CharFilter HTTP::CharFilter::qdtext     = HTTP::CharFilter::vchar | HTTP::CharFilter::sp
+                                                    | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text
+                                                    - "\"\\";
+const HTTP::CharFilter HTTP::CharFilter::qdright    = HTTP::CharFilter::vchar | HTTP::CharFilter::sp
+                                                    | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text;
+const HTTP::CharFilter HTTP::CharFilter::ctext      = HTTP::CharFilter::vchar | HTTP::CharFilter::sp
+                                                    | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text
+                                                    - "()\\";
 
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
 // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
 //                ;               !     #-[        ]-~
-//                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
+//                ; HTAB + SP + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
 // obs-text       = %x80-FF ; extended ASCII
 // quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+
+// comment        = "(" *( ctext / quoted-pair / comment ) ")"
+// ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
+//                ; HTAB + SP + 表示可能文字, ただしカッコとバッスラを除く

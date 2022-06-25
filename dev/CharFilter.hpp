@@ -68,7 +68,8 @@ namespace HTTP {
         static const CharFilter obs_text;
         static const CharFilter vchar;
         static const CharFilter qdtext;
-        static const CharFilter quoted_right;
+        static const CharFilter qdright;
+        static const CharFilter ctext;
 
         byte_string str() const;
     };

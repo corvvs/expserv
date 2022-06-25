@@ -24,6 +24,7 @@ namespace HeaderHTTP {
     const std::string te                = "te";
     const std::string vary              = "vary";
     const std::string upgrade           = "upgrade";
+    const std::string via               = "via";
 }
 
 // あるヘッダキーの属性
