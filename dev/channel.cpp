@@ -47,7 +47,7 @@ void    Channel::timeout(IObserver& observer, t_time_epoch_ms epoch) {
     // * DO NOTHING *
     (void)observer;
     (void)epoch;
-    DXOUT("* DO NOTHING *: " << get_fd());
+    // DXOUT("* DO NOTHING *: " << get_fd());
 }
 
 Channel::t_channel_id   Channel::get_id() const {

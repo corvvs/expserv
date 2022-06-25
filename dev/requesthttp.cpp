@@ -645,16 +645,14 @@ void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder& holder) {
         light_string    val_lstr = light_string(*it);
         for (;;) {
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
-            DXOUT("val_lstr: " << val_lstr.qstr());
+            QVOUT(val_lstr);
             if (val_lstr.size() == 0) { break; }
             const light_string p1 = val_lstr.substr_while(HTTP::CharFilter::tchar);
-            DXOUT("p1: " << p1.qstr());
             if (p1.size() == 0) {
                 DXOUT("[KO] zero-width token(1): " << val_lstr.qstr());
                 break;
             }
             val_lstr = val_lstr.substr(p1.size());
-            DXOUT("val_lstr: " << val_lstr.qstr());
             light_string p2;
             if (val_lstr.size() > 0 && val_lstr[0] != ' ') {
                 if (val_lstr[0] != '/') {
@@ -664,8 +662,6 @@ void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder& holder) {
                 p2 = val_lstr.substr_while(HTTP::CharFilter::tchar, 1);
                 val_lstr = val_lstr.substr(1 + p2.size());
             }
-            DXOUT("val_lstr: " << val_lstr.qstr());
-            DXOUT("p2: " << p2.qstr());
             HTTP::Term::Received    r;
             HTTP::Term::Protocol&   p = r.protocol;
             if (p2.size() == 0) {
@@ -690,7 +686,11 @@ void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder& holder) {
             }
             via.receiveds.push_back(r);
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
-            DXOUT("val_lstr: " << val_lstr.qstr() << ", " << (val_lstr.size() > 0 && val_lstr[0] == ','));
+
+            const light_string comment = extract_comment(val_lstr);
+            QVOUT(comment);
+            QVOUT(val_lstr);
+
             if (val_lstr.size() > 0 && val_lstr[0] == ',') {
                 val_lstr = val_lstr.substr(1);
                 continue;
@@ -724,6 +724,50 @@ void    RequestHTTP::ControlParams::pack_host(HTTP::Term::Host& host_item, const
     DXOUT("port: \"" << host_item.port << "\"");
 }
 
+
+RequestHTTP::light_string    RequestHTTP::ControlParams::extract_comment(light_string& val_lstr) {
+    // comment        = "(" *( ctext / quoted-pair / comment ) ")"
+    // ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
+    //                ; HTAB + SP + 表示可能文字, ただしカッコとバッスラを除く
+    if (val_lstr.size() == 0 || val_lstr[0] != '(') {
+        return val_lstr.substr(0, 0);
+    }
+    int paren = 0;
+    bool quoted = false;
+    light_string comment_from = val_lstr;
+    light_string::size_type n = 0;
+    for (;val_lstr.size() > 0; ++n, val_lstr = val_lstr.substr(1)) {
+        const char c = val_lstr[0];
+        if (quoted) {
+            if (!HTTP::CharFilter::qdright.includes(c)) {
+                DXOUT("[KO] quoting non-quotable char: " << val_lstr.qstr());
+                break;
+            }
+            quoted = false;
+        } else {
+            if (c == '(') {
+                paren += 1;
+            } else if (c == ')') {
+                if (paren <= 0) {
+                    DXOUT("[KO] too much ): " << val_lstr.qstr());
+                    break;
+                }
+                paren -= 1;
+                if (paren == 0) {
+                    DXOUT("finish comment");
+                    val_lstr = val_lstr.substr(1);
+                    break;
+                }
+            } else if (c == '\\') {
+                quoted = true;
+            } else if (!HTTP::CharFilter::ctext.includes(c)) {
+                DXOUT("[KO] non ctext in comment: " << val_lstr.qstr());
+                break;
+            }
+        }
+    }
+    return comment_from.substr(0, n);
+}
 
 RequestHTTP::light_string
     RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(
