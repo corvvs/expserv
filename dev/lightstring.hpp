@@ -39,7 +39,7 @@ private:
 public:
 
     LightString(): base(&blank_str) {
-        first = last;
+        first = last = blank_str.size();
     }
 
     LightString(const string_class& str):
@@ -140,7 +140,7 @@ public:
             return npos;
         }
         for (typename string_class::size_type i = pos; i < size(); ++i) {
-            if (filter.includes(operator[](i))) {
+            if (filter.includes((*this)[i])) {
                 return i;
             }
         }
@@ -176,7 +176,7 @@ public:
             return npos;
         }
         for (size_type i = pos; i < size(); ++i) {
-            if (!filter.includes(operator[](i))) {
+            if (!filter.includes((*this)[i])) {
                 return i;
             }
         }
@@ -196,7 +196,7 @@ public:
         }
         for (size_type i = size(); 0 + pos < i;) {
             --i;
-            if (!filter.includes(operator[](i))) {
+            if (!filter.includes((*this)[i])) {
                 return i;
             }
         }
@@ -209,7 +209,7 @@ public:
     size_type       find(const string_class& str, size_type pos = 0) const {
         for (size_type i = pos; i + str.size() <= size(); ++i) {
             size_type j = 0;
-            for (; j < str.size() && operator[](i + j) == str[j]; ++j);
+            for (; j < str.size() && (*this)[i + j] == str[j]; ++j);
             if (j == str.size()) {
                 return i;
             }
@@ -223,7 +223,7 @@ public:
     size_type       rfind(const string_class& str, size_type pos = 0) const {
         for (size_type i = size() - str.size(); pos <= i; --i) {
             size_type j = 0;
-            for (; j < str.size() && operator[](i + j) == str[j]; ++j);
+            for (; j < str.size() && (*this)[i + j] == str[j]; ++j);
             if (j == str.size()) {
                 return i;
             }
@@ -261,7 +261,7 @@ public:
         }
     }
 
-    // 「`pos`以降で最初に`filter`にマッチしなくなる位置」から後の部分参照する LightString を生成して返す
+    // 「`pos`以降で最初に`filter`にマッチしなくなる位置」から後の部分を参照する LightString を生成して返す
     // ※ substr(find_first_not_of(filter, pos)) と等価
     LightString substr_after(const filter_type& filter, size_type pos = 0) const {
         size_type n = find_first_not_of(filter, pos);
@@ -280,7 +280,7 @@ public:
         }
     }
 
-    // 「`pos`以降で最初に`filter`にマッチする位置」から後の部分参照する LightString を生成して返す
+    // 「`pos`以降で最初に`filter`にマッチする位置」から後の部分を参照する LightString を生成して返す
     // ※ substr(find_first_of(filter, pos)) と等価
     LightString substr_from(const filter_type& filter, size_type pos = 0) const {
         size_type n = find_first_of(filter, pos);
@@ -293,7 +293,7 @@ public:
         size_type word_to = 0;
         bool prev_is_sp = true;
         for (size_type i = 0; i <= size(); ++i) {
-            if (i == size() || filter.includes(operator[](i))) {
+            if (i == size() || filter.includes((*this)[i])) {
                 word_to = i;
                 if (prev_is_sp) {
                     word_from = i;
