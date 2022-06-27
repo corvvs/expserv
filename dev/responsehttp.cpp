@@ -33,8 +33,8 @@ void    ResponseHTTP::feed_body(const byte_string& str) {
     body = str;
 }
 
-void    ResponseHTTP::feed_body(byte_string::const_iterator first, byte_string::const_iterator last) {
-    body = byte_string(first, last);
+void    ResponseHTTP::feed_body(const light_string& str) {
+    body = str.str();
 }
 
 void    ResponseHTTP::render() {

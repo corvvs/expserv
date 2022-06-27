@@ -51,9 +51,12 @@ namespace ParserHelper {
     IndexRange  find_leading_crlf(const byte_string& str, ssize_t from, ssize_t len, bool is_terminated);
 
     // 文字列を「空白」で分割する
-    std::vector< byte_string >          split_by_sp(
+    std::vector< byte_string >  split_by_sp(
         byte_string::const_iterator first,
         byte_string::const_iterator last
+    );
+    std::vector<light_string>   split_by_sp(
+        const light_string& str
     );
 
     std::vector< HTTP::light_string >   split(

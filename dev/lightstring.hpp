@@ -98,6 +98,9 @@ public:
     // std::string を生成
     string_class    str() const {
         if (!base || first == last) { return ""; }
+        QVOUT(*base);
+        VOUT(first);
+        VOUT(last);
         return string_class(base->begin() + first, base->begin() + last);
     }
 
@@ -352,5 +355,22 @@ template <class T>
 std::ostream&   operator<<(std::ostream& out, const LightString<T>& ls) {
     return out << ls.str();
 }
+
+
+template <class T>
+bool            operator==(const LightString<T>& lhs, const LightString<T>& rhs) {
+    return lhs.get_base().compare(lhs.get_first(), lhs.length(), rhs.length(), rhs.get_base().c_str() + rhs.get_first()) == 0;
+}
+
+template <class T>
+bool            operator==(const LightString<T>& lhs, const std::basic_string<T>& rhs) {
+    return lhs.get_base().compare(lhs.get_first(), lhs.length(), rhs) == 0;
+}
+
+template <class T>
+bool            operator==(const LightString<T>& lhs, const char* rhs) {
+    return strncmp(lhs.get_base().c_str() + lhs.get_first(), rhs, lhs.length()) == 0;
+}
+
 
 #endif

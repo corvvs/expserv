@@ -25,7 +25,8 @@ ResponseHTTP*   HTTPServer::route(RequestHTTP* request) {
         request->get_http_version(),
         HTTP::STATUS_OK
     );
-    res->feed_body(request->get_body_begin(), request->get_body_end());
+    
+    res->feed_body(request->get_body());
     res->render();
     DXOUT(res->get_message_text());
     return res;

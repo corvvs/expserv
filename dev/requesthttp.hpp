@@ -68,6 +68,7 @@ public:
         size_t                      start_of_header;
         size_t                      end_of_header;
         size_t                      start_of_body;
+        size_t                      end_of_body;
         size_t                      start_of_current_chunk;
         size_t                      start_of_current_chunk_data;
         size_t                      start_of_trailer_field;
@@ -80,7 +81,7 @@ public:
 
     // リクエストの制御, ルーティングにかかわるパラメータ
     struct ControlParams {
-        byte_string                     request_path;
+        light_string                    request_path;
         HTTP::t_method                  http_method;
         HTTP::t_version                 http_version;
 
@@ -167,36 +168,27 @@ public:
     ~RequestHTTP();
 
     // 内部バッファにバイト列を追加し, ラフパースを試みる
-    void    feed_bytestring(char *bytes, size_t len);
+    void            feed_bytestring(char *bytes, size_t len);
 
     // 受信済み(未解釈含む)データサイズ
-    size_t  receipt_size() const;
+    size_t          receipt_size() const;
     // 解釈済みボディサイズ
-    size_t  parsed_body_size() const;
+    size_t          parsed_body_size() const;
     // 解釈済みデータサイズ
-    size_t  parsed_size() const;
+    size_t          parsed_size() const;
 
     // リクエストのHTTPバージョン
-    HTTP::t_version
-            get_http_version() const;
-
-    // リクエスト本文の開始位置 -> OBS
-    byte_string::const_iterator
-            get_body_begin() const;
-    // リクエスト本文の終了位置 -> OBS
-    byte_string::const_iterator
-            get_body_end() const;
+    HTTP::t_version get_http_version() const;
 
     // 受信したデータから本文を抽出して返す
-    byte_string
-            get_body() const;
+    byte_string     get_body() const;
 
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
-    bool    is_ready_to_navigate() const;
+    bool            is_ready_to_navigate() const;
     // predicate: レスポンスを作成できる状態になったかどうか
-    bool    is_ready_to_respond() const;
+    bool            is_ready_to_respond() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
-    bool    should_keep_in_touch() const;
+    bool            should_keep_in_touch() const;
 };
 
 #endif

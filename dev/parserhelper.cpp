@@ -160,6 +160,24 @@ std::vector< ParserHelper::byte_string >  ParserHelper::split_by_sp(
     return rv;
 }
 
+std::vector< ParserHelper::light_string >  ParserHelper::split_by_sp(const light_string& str) {
+    std::vector< light_string >  rv;
+    light_string::size_type len = str.length();
+    light_string::size_type i = 0;
+    light_string::size_type word_from = 0;
+    bool prev_is_sp = true;
+    for (; i <= len; i++) {
+        bool cur_is_sp = i == len || is_sp(str[i]);
+        if (cur_is_sp && !prev_is_sp) {
+            rv.push_back(str.substr(word_from, i - word_from));
+        } else if (!cur_is_sp && prev_is_sp) {
+            word_from = i;
+        }
+        prev_is_sp = cur_is_sp;
+    }
+    return rv;
+}
+
 std::vector< HTTP::light_string >   ParserHelper::split(
     const HTTP::light_string& lstr,
     const byte_string& charset

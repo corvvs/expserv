@@ -1,23 +1,15 @@
 #include "requesthttp.hpp"
 
-HTTP::t_method   discriminate_request_method(
-    RequestHTTP::byte_string::iterator begin,
-    RequestHTTP::byte_string::iterator end
-) {
-    RequestHTTP::byte_string sub(begin, end);
-    if (sub == "GET")       { return HTTP::METHOD_GET; }
-    if (sub == "POST")      { return HTTP::METHOD_POST; }
-    if (sub == "DELETE")    { return HTTP::METHOD_DELETE; }
+HTTP::t_method   discriminate_request_method(const HTTP::light_string& str) {
+    if (str == "GET")    { return HTTP::METHOD_GET; }
+    if (str == "POST")   { return HTTP::METHOD_POST; }
+    if (str == "DELETE") { return HTTP::METHOD_DELETE; }
     throw http_error("unsupported method", HTTP::STATUS_METHOD_NOT_ALLOWED);
 }
 
-HTTP::t_version  discriminate_request_version(
-    RequestHTTP::byte_string::iterator begin,
-    RequestHTTP::byte_string::iterator end
-) {
-    RequestHTTP::byte_string sub(begin, end);
-    if (sub == HTTP::version_str(HTTP::V_1_0)) { return HTTP::V_1_0; }
-    if (sub == HTTP::version_str(HTTP::V_1_1)) { return HTTP::V_1_1; }
+HTTP::t_version  discriminate_request_version(const HTTP::light_string& str) {
+    if (str == HTTP::version_str(HTTP::V_1_0)) { return HTTP::V_1_0; }
+    if (str == HTTP::version_str(HTTP::V_1_1)) { return HTTP::V_1_1; }
     throw http_error("unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
@@ -124,7 +116,8 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
 
             if (parsed_body_size() < this->cp.body_size) { return; }
 
-            this->mid = this->cp.body_size + this->ps.start_of_body;
+            this->ps.end_of_body = this->cp.body_size + this->ps.start_of_body;;
+            this->mid = this->ps.end_of_body;
             this->ps.parse_progress = PARSE_REQUEST_OVER;
             continue;
         }
@@ -269,7 +262,7 @@ bool    RequestHTTP::seek_reqline_end(size_t len) {
 }
 
 void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
-    std::vector< byte_string > splitted = ParserHelper::split_by_sp(raw_req_line.begin(), raw_req_line.end());
+    std::vector< light_string > splitted = ParserHelper::split_by_sp(raw_req_line);
 
     switch (splitted.size()) {
         case 2:
@@ -277,12 +270,12 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
             // HTTP/0.9?
             // HTTP/1.*?
 
-            this->cp.http_method = discriminate_request_method(splitted[0].begin(), splitted[0].end());
+            this->cp.http_method = discriminate_request_method(splitted[0]);
             DXOUT(splitted[0] << " -> http_method: " << this->cp.http_method);
             this->cp.request_path = splitted[1];
             DXOUT("request_path: " << this->cp.request_path);
             if (splitted.size() == 3) {
-                this->cp.http_version = discriminate_request_version(splitted[2].begin(), splitted[2].end());
+                this->cp.http_version = discriminate_request_version(splitted[2]);
             } else {
                 this->cp.http_version = HTTP::V_0_9;
             }
@@ -983,14 +976,12 @@ HTTP::t_version RequestHTTP::get_http_version() const {
     return this->cp.http_version;
 }
 
-RequestHTTP::byte_string::const_iterator
-                RequestHTTP::get_body_begin() const {
-    return bytebuffer.begin() + this->ps.start_of_body;
-}
-
-RequestHTTP::byte_string::const_iterator
-                RequestHTTP::get_body_end() const {
-    return bytebuffer.end();
+RequestHTTP::byte_string    RequestHTTP::get_body() const {
+    if (cp.is_body_chunked) {
+        return chunked_body.body();
+    } else {
+        return byte_string(bytebuffer, this->ps.start_of_body, this->ps.end_of_body);
+    }
 }
 
 bool            RequestHTTP::should_keep_in_touch() const {

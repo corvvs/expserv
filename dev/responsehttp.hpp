@@ -13,6 +13,7 @@
 class ResponseHTTP {
 public:
     typedef HTTP::byte_string       byte_string;
+    typedef HTTP::light_string      light_string;
     typedef HTTP::header_dict_type  header_dict_type;
 
 private:
@@ -50,9 +51,7 @@ public:
     // ボディを追加する
     void    feed_body(const byte_string& str);
     // ボディを追加する
-    void    feed_body(
-        byte_string::const_iterator first,
-        byte_string::const_iterator last);
+    void    feed_body(const light_string& str);
 
     // 保持している情報をもとにHTTPメッセージのテキストデータを生成し, 
     // message_text に入れる.
