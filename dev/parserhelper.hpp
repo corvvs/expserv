@@ -27,7 +27,10 @@ namespace ParserHelper {
     IndexRange  find_crlf(const byte_string& str, ssize_t from, ssize_t len);
 
     // ヘッダー値用のfind_crlf; obs-fold をスルーする
+    // 返す range は str の先頭からのものになる
     IndexRange  find_crlf_header_value(const byte_string& str, ssize_t from, ssize_t len);
+    // 返す range は str の先頭からのものになる
+    IndexRange  find_crlf_header_value(const light_string& str);
 
     // obs-foldがあれば, そのレンジを返す
     IndexRange  find_obs_fold(const byte_string& str, ssize_t from, ssize_t len);
@@ -46,7 +49,6 @@ namespace ParserHelper {
     // ただし, 文字列が完結しておらず, 曖昧性がある場合は空の区間を返す.
     // 先頭が確実にCRLFでないなら, Invalid な区間を返す.
     IndexRange  find_leading_crlf(const byte_string& str, ssize_t from, ssize_t len, bool is_terminated);
-
 
     // 文字列を「空白」で分割する
     std::vector< byte_string >          split_by_sp(

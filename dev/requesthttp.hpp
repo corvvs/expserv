@@ -61,7 +61,19 @@ public:
         // ヘッダ行解析において obs-fold に遭遇したかどうか
         bool                        found_obs_fold;
 
+        t_http_request_parse_progress
+                                    parse_progress;
+        size_t                      start_of_reqline;
+        size_t                      end_of_reqline;
+        size_t                      start_of_header;
+        size_t                      end_of_header;
+        size_t                      start_of_body;
+        size_t                      start_of_current_chunk;
+        size_t                      start_of_current_chunk_data;
+        size_t                      start_of_trailer_field;
+        size_t                      end_of_trailer_field;
         ChunkedBody::Chunk          current_chunk;
+
 
         ParserStatus();
     };
@@ -117,17 +129,6 @@ private:
     byte_string                     bytebuffer;
     ssize_t                         mid;
 
-    // パースに関する情報
-    t_http_request_parse_progress   parse_progress;
-    size_t                          start_of_reqline;
-    size_t                          end_of_reqline;
-    size_t                          start_of_current_header;
-    size_t                          start_of_header;
-    size_t                          end_of_header;
-    size_t                          start_of_body;
-    size_t                          start_of_current_chunk;
-    size_t                          start_of_current_chunk_data;
-
     // 解析中の情報
     ParserStatus                    ps;
 
@@ -150,9 +151,9 @@ private:
     // [begin, end) を要求行としてパースする
     void    parse_reqline(const light_string& line);
     // ヘッダ行全体をパースする
-    void    parse_header_lines(const byte_string& bytestring, ssize_t from, ssize_t len);
+    void    parse_header_lines(const light_string& lines, HeaderHTTPHolder* holder) const;
     // ヘッダ行をパースする
-    void    parse_header_line(const light_string& line);
+    void    parse_header_line(const light_string& line, HeaderHTTPHolder* holder) const;
     
     void    parse_chunk_size_line(const light_string& line);
     void    parse_chunk_data(const light_string& data);

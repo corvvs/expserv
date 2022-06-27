@@ -79,7 +79,8 @@ class HeaderHTTPHolder {
 public:
     typedef HTTP::header_key_type                       header_key_type;
     typedef HTTP::header_val_type                       header_val_type;
-    typedef LightString<HTTP::char_type>                light_string;
+    typedef HTTP::byte_string                           byte_string;
+    typedef HTTP::light_string                          light_string;
     typedef HeaderHTTPItem                              header_item_type;
     // なぜ vector などではなく list を使うのかというと, 再確保を防ぐため.
     // 再確保を防ぐのは, dict で HeaderHTTPItem のポインタを保持するから.
@@ -95,7 +96,7 @@ private:
 
 public:
     // 指定したキーに値を追加する
-    void                    add_item(const light_string& key, const header_val_type& val);
+    void                    add_item(const light_string& key, const light_string& val);
     // 指定したキーの値オブジェクトを取得する
     const header_item_type* get_item(const header_key_type& normalized_key) const;
     // 指定したキーの値を取得する; 複数ある場合は先頭を取得する

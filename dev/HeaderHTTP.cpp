@@ -67,7 +67,28 @@ const HeaderHTTPItem::value_list_type&
 
 // [HeaderHTTPHolder]
 
-void    HeaderHTTPHolder::add_item(const light_string& key, const header_val_type& val) {
+void    HeaderHTTPHolder::add_item(const light_string& key, const light_string& val) {
+    // val の obs-foldを除去し, 全体を string に変換する.
+    // obs-fold を検知した場合, そのことを記録する
+
+    byte_string sval;
+    byte_string pval = val.str();
+    ssize_t movement = 0;
+    while (true) {
+        IndexRange obs_fold = ParserHelper::find_obs_fold(pval, movement, val.length() - movement);
+        if (obs_fold.is_invalid()) {
+            sval.append(pval, movement, obs_fold.second - movement);
+            break;
+        }
+        sval.append(pval, movement, obs_fold.first - movement);
+        sval.append(ParserHelper::SP);
+        VOUT(obs_fold);
+        // TODO: obs-foldを検知したことをリクエストに通知する必要がある
+        // -> holder に持たせておけばよさそう
+        // this->ps.found_obs_fold = true;
+        movement = obs_fold.second;
+    }
+
     header_key_type norm_key = ParserHelper::normalize_header_key(key);
     HeaderHTTPItem* item = dict[norm_key];
     if (item == NULL) {
@@ -75,7 +96,7 @@ void    HeaderHTTPHolder::add_item(const light_string& key, const header_val_typ
         item = &(list.back());
         dict[norm_key] = item;
     }
-    item->add_val(val);
+    item->add_val(sval);
 }
 
 const HeaderHTTPHolder::header_item_type*

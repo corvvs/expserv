@@ -38,6 +38,14 @@ IndexRange ParserHelper::find_crlf_header_value(const byte_string& str, ssize_t 
     return IndexRange(from + len + 1, from + len);
 }
 
+IndexRange ParserHelper::find_crlf_header_value(const light_string& str) {
+    IndexRange res = find_crlf_header_value(str.get_base(), str.get_first(), str.length());
+    if (res.is_invalid()) {
+        return res;
+    }
+    return IndexRange(res.first - str.get_first(), res.second - str.get_first());
+}
+
 IndexRange ParserHelper::find_obs_fold(const byte_string& str, ssize_t from, ssize_t len) {
     ssize_t movement = 0;
     while (true) {
@@ -104,29 +112,28 @@ ssize_t      ParserHelper::ignore_not_sp(const byte_string& str, ssize_t from, s
 }
 
 IndexRange  ParserHelper::find_leading_crlf(const byte_string& str, ssize_t from, ssize_t len, bool is_terminated) {
-    IndexRange nl;
     if (len >= 2 && str[from] == '\r' && str[from + 1] == '\n') {
         // CRLF
-        nl = IndexRange(from, from + 2);
+        return IndexRange(from, from + 2);
     } else if (len >= 1 && str[from] == '\n') {
         // LF
-        nl = IndexRange(from, from + 1);
+        return IndexRange(from, from + 1);
     } else if (len >= 2 && str[from] == '\r') {
         // CR
-        nl = IndexRange(from, from + 1);
+        return IndexRange(from, from + 1);
     } else if (len == 1 && str[from] == '\r' && is_terminated) {
         // CR
-        nl = IndexRange(from, from + 1);
+        return IndexRange(from, from + 1);
     } else if (len == 1 && str[from] == '\r') {
         // CRだがCRLFかもしれない
-        nl = IndexRange(from, from);
+        return IndexRange(from, from);
     } else if (len == 0 && !is_terminated) {
         // CR, LF, CRLFかもしれない
-        nl = IndexRange(from, from);
+        return IndexRange(from, from);
     } else {
-        nl = IndexRange(from, from - 1);
+        // 確実にマッチしない
+        return IndexRange(from, from - 1);
     }
-    return nl;
 }
 
 std::vector< ParserHelper::byte_string >  ParserHelper::split_by_sp(

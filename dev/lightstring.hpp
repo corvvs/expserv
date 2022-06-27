@@ -87,6 +87,14 @@ public:
         return *base;
     }
 
+    size_type           get_first() const {
+        return first;
+    }
+
+    size_type           get_last() const {
+        return last;
+    }
+
     // std::string を生成
     string_class    str() const {
         if (!base || first == last) { return ""; }
