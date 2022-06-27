@@ -1,4 +1,5 @@
 #include "parserhelper.hpp"
+#include <limits>
 
 IndexRange ParserHelper::find_crlf(const byte_string& str, ssize_t from, ssize_t len) {
     for (ssize_t i = from; i - from < len; i++) {
@@ -102,6 +103,32 @@ ssize_t      ParserHelper::ignore_not_sp(const byte_string& str, ssize_t from, s
     return i;
 }
 
+IndexRange  ParserHelper::find_leading_crlf(const byte_string& str, ssize_t from, ssize_t len, bool is_terminated) {
+    IndexRange nl;
+    if (len >= 2 && str[from] == '\r' && str[from + 1] == '\n') {
+        // CRLF
+        nl = IndexRange(from, from + 2);
+    } else if (len >= 1 && str[from] == '\n') {
+        // LF
+        nl = IndexRange(from, from + 1);
+    } else if (len >= 2 && str[from] == '\r') {
+        // CR
+        nl = IndexRange(from, from + 1);
+    } else if (len == 1 && str[from] == '\r' && is_terminated) {
+        // CR
+        nl = IndexRange(from, from + 1);
+    } else if (len == 1 && str[from] == '\r') {
+        // CRだがCRLFかもしれない
+        nl = IndexRange(from, from);
+    } else if (len == 0 && !is_terminated) {
+        // CR, LF, CRLFかもしれない
+        nl = IndexRange(from, from);
+    } else {
+        nl = IndexRange(from, from - 1);
+    }
+    return nl;
+}
+
 std::vector< ParserHelper::byte_string >  ParserHelper::split_by_sp(
     ParserHelper::byte_string::const_iterator first,
     ParserHelper::byte_string::const_iterator last
@@ -155,6 +182,26 @@ unsigned int    ParserHelper::stou(const byte_string& str) {
     return v;
 }
 
+std::pair<bool, unsigned int>   ParserHelper::xtou(const HTTP::light_string& str) {
+    unsigned int n = 0;
+    const HTTP::byte_string xs = "0123456789abcdef";
+    unsigned int max_val = std::numeric_limits<unsigned int>::max();
+    for (HTTP::light_string::size_type i = 0; i < str.size(); ++i) {
+        char c = str[i];
+        HTTP::byte_string::size_type j = xs.find(tolower(c));
+        if (j == HTTP::byte_string::npos) {
+            return std::pair<bool, unsigned int>(false, n);
+        }
+        // n * xs.size() + j > std::numeric_limits<int>::max();
+        if (n > max_val / xs.size()
+            || j > max_val - n * xs.size()) {
+            return std::pair<bool, unsigned int>(false, n);
+        }
+        n = n * xs.size() + j;
+    }
+    return std::pair<bool, unsigned int>(true, n);
+}
+
 unsigned int    ParserHelper::stou(const HTTP::light_string& str) {
     return stou(str.str());
 }
@@ -181,4 +228,47 @@ unsigned int    ParserHelper::quality_to_u(HTTP::light_string& quality) {
         }
     }
     return v;
+}
+
+ParserHelper::light_string  ParserHelper::extract_quoted_or_token(const light_string& str) {
+    if (str.size() == 0) { return str; }
+    //                  [key]            [value]
+    // parameter      = token "=" ( token / quoted-string )
+    if (HTTP::CharFilter::dquote.includes(str[0])) {
+        // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+        // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+        //                ;               !     #-[        ]-~
+        //                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
+        // obs-text       = %x80-FF ; extended ASCII
+        // quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+        light_string::size_type i = 1;
+        bool    quoted = false;
+        for(;i < str.size(); ++i) {
+            const HTTP::byte_type c = str[i];
+            if (!quoted && HTTP::CharFilter::dquote.includes(c)) {
+                // クオートされてないダブルクオート
+                // -> ここで終わり
+                break;
+            }
+            if (quoted && !HTTP::CharFilter::qdright.includes(c)) {
+                // クオートの右がquoted_rightではない
+                // -> 不適格
+                DXOUT("[KO] not suitable for quote");
+                return str.substr(str.size());
+            }
+            if (!quoted && HTTP::CharFilter::bslash.includes(c)) {
+                // クオートされてないバックスラッシュ
+                // -> クオートフラグ立てる
+                quoted = true;
+            } else {
+                quoted = false;
+            }
+        }
+        // DXOUT("quoted-string: \"" << light_string(value_str, 0, i + 1) << "\"");
+        return str.substr(0, i + 1);
+    } else {
+        // token          = 1*tchar
+        const light_string just_value_str = str.substr_while(HTTP::CharFilter::tchar);
+        return just_value_str;
+    }
 }

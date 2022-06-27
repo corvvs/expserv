@@ -56,7 +56,6 @@ public:
         base(&str),
         first(fi),
         last(std::max(first, std::min(str.size(), li))) {
-            DXOUT(first << ":" << last);
         }
 
     LightString(const string_class& str, const IndexRange& range):

@@ -12,8 +12,8 @@
 # include "utils_string.hpp"
 
 namespace ParserHelper {
-    typedef HTTP::byte_string               byte_string;
-    // typedef std::pair<ssize_t, ssize_t>     IndexRange;
+    typedef HTTP::byte_string   byte_string;
+    typedef HTTP::light_string  light_string;
 
     const byte_string SP = " ";
     const byte_string OWS = " \t";
@@ -42,6 +42,12 @@ namespace ParserHelper {
     // 文字列の先頭から, 「空白」以外をすべてスキップした位置のインデックスを返す
     ssize_t     ignore_not_sp(const byte_string& str, ssize_t from, ssize_t len);
 
+    // 文字列の先頭に CRLF があるなら, その部分を返す.
+    // ただし, 文字列が完結しておらず, 曖昧性がある場合は空の区間を返す.
+    // 先頭が確実にCRLFでないなら, Invalid な区間を返す.
+    IndexRange  find_leading_crlf(const byte_string& str, ssize_t from, ssize_t len, bool is_terminated);
+
+
     // 文字列を「空白」で分割する
     std::vector< byte_string >          split_by_sp(
         byte_string::const_iterator first,
@@ -56,6 +62,7 @@ namespace ParserHelper {
     byte_string normalize_header_key(const byte_string& key);
     byte_string normalize_header_key(const HTTP::light_string& key);
 
+    std::pair<bool,unsigned int>    xtou(const HTTP::light_string& str);
     // string to size_t 変換
     unsigned int    stou(const byte_string& str);
     unsigned int    stou(const HTTP::light_string& str);
@@ -64,6 +71,8 @@ namespace ParserHelper {
     // quality("q=0.05" の右辺側みたいな形式の文字列)を1000倍したunsigned intに変換
     // qualityとしてvalidなもののみ渡すこと.
     unsigned int    quality_to_u(HTTP::light_string& quality);
+
+    light_string    extract_quoted_or_token(const light_string& str);
 }
 
 #endif

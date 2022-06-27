@@ -165,6 +165,7 @@ const HTTP::CharFilter HTTP::CharFilter::gen_delims = HTTP::Charset::gen_delims;
 const HTTP::CharFilter HTTP::CharFilter::sub_delims = HTTP::Charset::sub_delims;
 const HTTP::CharFilter HTTP::CharFilter::tchar      = HTTP::Charset::tchar;
 const HTTP::CharFilter HTTP::CharFilter::sp         = HTTP::Charset::sp;
+const HTTP::CharFilter HTTP::CharFilter::bad_sp     = HTTP::CharFilter::sp;
 const HTTP::CharFilter HTTP::CharFilter::ws         = HTTP::Charset::ws;
 const HTTP::CharFilter HTTP::CharFilter::crlf       = HTTP::Charset::crlf;
 const HTTP::CharFilter HTTP::CharFilter::cr         = "\r";

@@ -18,6 +18,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					http_error.cpp\
 					http.cpp\
 					CharFilter.cpp\
+					ChunkedBody.cpp\
 					httpserver.cpp\
 					utils_string.cpp\
 					test_common.cpp

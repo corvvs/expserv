@@ -58,6 +58,7 @@ namespace HTTP {
         static const CharFilter sub_delims;
         static const CharFilter tchar;
         static const CharFilter sp;
+        static const CharFilter bad_sp;
         static const CharFilter ws;
         static const CharFilter crlf;
         static const CharFilter cr;

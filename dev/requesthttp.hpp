@@ -16,6 +16,7 @@
 # include "ValidatorHTTP.hpp"
 # include "ControlHeaderHTTP.hpp"
 # include "utils_string.hpp"
+# include "ChunkedBody.hpp"
 
 enum t_http_request_parse_progress {
     // 開始行の開始位置 を探している
@@ -26,9 +27,20 @@ enum t_http_request_parse_progress {
     PARSE_REQUEST_HEADER_SECTION_END,
     // ボディ を探している
     PARSE_REQUEST_BODY,
+
+    // チャンクのサイズ行の終了位置 を探している
+    PARSE_REQUEST_CHUNK_SIZE_LINE_END,
+    // チャンクの終了位置 を探している
+    PARSE_REQUEST_CHUNK_DATA_END,
+    // チャンクの終了直後の改行 を探している
+    PARSE_REQUEST_CHUNK_DATA_CRLF,
+    // チャンクのトレイラーフィールドの終了位置 を探している
+    PARSE_REQUEST_TRAILER_FIELD_END,
+
     PARSE_REQUEST_OVER,
     PARSE_REQUEST_ERROR
 };
+
 
 // [HTTPリクエストクラス]
 // [責務]
@@ -49,6 +61,8 @@ public:
         // ヘッダ行解析において obs-fold に遭遇したかどうか
         bool                        found_obs_fold;
 
+        ChunkedBody::Chunk          current_chunk;
+
         ParserStatus();
     };
 
@@ -58,8 +72,8 @@ public:
         HTTP::t_method                  http_method;
         HTTP::t_version                 http_version;
 
-        // -1 は未指定をあらわす
         size_t                          body_size;
+        bool                            is_body_chunked;
 
         HTTP::CH::Host                  header_host;
         HTTP::CH::ContentType           content_type;
@@ -96,6 +110,7 @@ public:
 
         // HTTP における`comment`を取り出す.
         light_string    extract_comment(const light_string& str);
+
     };
 
 private:
@@ -110,15 +125,18 @@ private:
     size_t                          start_of_header;
     size_t                          end_of_header;
     size_t                          start_of_body;
-    // size_t                          end_of_body;
+    size_t                          start_of_current_chunk;
+    size_t                          start_of_current_chunk_data;
 
     // 解析中の情報
     ParserStatus                    ps;
 
-
     // 確定した情報
     // 制御パラメータ
     ControlParams                   cp;
+
+    // chunked本文
+    ChunkedBody                     chunked_body;
 
     // [HTTPヘッダ]
     HeaderHTTPHolder                header_holder;
@@ -136,6 +154,10 @@ private:
     // ヘッダ行をパースする
     void    parse_header_line(const light_string& line);
     
+    void    parse_chunk_size_line(const light_string& line);
+    void    parse_chunk_data(const light_string& data);
+
+
     // ヘッダから必要な情報を取る
     void    extract_control_headers();
 
@@ -157,12 +179,16 @@ public:
     HTTP::t_version
             get_http_version() const;
 
-    // リクエスト本文の開始位置
+    // リクエスト本文の開始位置 -> OBS
     byte_string::const_iterator
             get_body_begin() const;
-    // リクエスト本文の終了位置
+    // リクエスト本文の終了位置 -> OBS
     byte_string::const_iterator
             get_body_end() const;
+
+    // 受信したデータから本文を抽出して返す
+    byte_string
+            get_body() const;
 
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
     bool    is_ready_to_navigate() const;

@@ -35,12 +35,12 @@ RequestHTTP::RequestHTTP():
 
 RequestHTTP::~RequestHTTP() {}
 
-void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
-    bytebuffer.insert(bytebuffer.end(), bytes, bytes + len);
-
-    for (;len > 0;) {
+void    RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
+    bytebuffer.insert(bytebuffer.end(), bytes, bytes + feed_len);
+    bool is_disconnected = feed_len == 0;
+    size_t len = 1;
+    do {
         len = bytebuffer.length() - mid;
-
         switch (parse_progress) {
         case PARSE_REQUEST_REQLINE_START: {
 
@@ -93,7 +93,13 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
             start_of_body = res.second;
             parse_header_lines(bytebuffer, start_of_header, end_of_header - start_of_header);
             extract_control_headers();
-            parse_progress = PARSE_REQUEST_BODY;
+            VOUT(cp.is_body_chunked);
+            if (cp.is_body_chunked) {
+                parse_progress = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
+                start_of_current_chunk = start_of_body;
+            } else {
+                parse_progress = PARSE_REQUEST_BODY;
+            }
             continue;
         }
 
@@ -112,11 +118,78 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
             //   -> 続行
             // - (else) 受信済みサイズが content-length 以上なら
             //   -> 受信済みサイズ = mid - start_of_body が content-length になるよう調整
+
             if (parsed_body_size() < cp.body_size) { return; }
 
             mid = cp.body_size + start_of_body;
             parse_progress = PARSE_REQUEST_OVER;
+            continue;
+        }
 
+        // chunked-body サイズ行終端を探す
+        case PARSE_REQUEST_CHUNK_SIZE_LINE_END: {
+            IndexRange res = ParserHelper::find_crlf(bytebuffer, mid, len);
+            mid = res.second;
+            if (res.is_invalid()) { return ; }
+            // [start_of_current_chunk, res.first) がサイズ行のはず.
+
+            light_string chunk_size_line(bytebuffer, start_of_current_chunk, res.first);
+            QVOUT(chunk_size_line);
+            parse_chunk_size_line(chunk_size_line);
+            start_of_current_chunk_data = mid;
+            // TODO: サイズ行の解析
+            VOUT(ps.current_chunk.chunk_size);
+            if (ps.current_chunk.chunk_size == 0) {
+                // 最終チャンクなら PARSE_REQUEST_TRAILER_FIELD_END に飛ばす
+                parse_progress = PARSE_REQUEST_TRAILER_FIELD_END;
+            } else {
+                parse_progress = PARSE_REQUEST_CHUNK_DATA_END;
+            }
+            continue;
+        }
+
+        // chunked-body チャンク終端を探す
+        case PARSE_REQUEST_CHUNK_DATA_END: {
+            const byte_string::size_type received_data_size = mid - start_of_current_chunk_data;
+            const byte_string::size_type data_end = ps.current_chunk.chunk_size - received_data_size;
+            if (data_end > len) {
+                mid += len;
+                return;
+            }
+            mid += data_end;
+            ps.current_chunk.chunk_str = light_string(bytebuffer, start_of_current_chunk, mid);
+            ps.current_chunk.data_str = light_string(bytebuffer, start_of_current_chunk_data, mid);
+            QVOUT(ps.current_chunk.chunk_str);
+            QVOUT(ps.current_chunk.data_str);
+            parse_progress = PARSE_REQUEST_CHUNK_DATA_CRLF;
+            continue;
+        }
+
+        /// チャンク終端の次がCRLFであることを確認する
+        case PARSE_REQUEST_CHUNK_DATA_CRLF: {
+            // CRLF|CR|LF
+            VOUT(mid);
+            IndexRange nl = ParserHelper::find_leading_crlf(bytebuffer, mid, len, is_disconnected);
+            if (nl.is_invalid()) {
+                throw http_error("invalid chunk-data end?", HTTP::STATUS_BAD_REQUEST);
+            }
+            if (nl.length() == 0) {
+                return;
+            }
+            ps.current_chunk.data_str = light_string(bytebuffer, start_of_current_chunk_data, mid);
+            parse_progress = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
+            mid = nl.second;
+            start_of_current_chunk = mid;
+            chunked_body.add_chunk(ps.current_chunk);
+            VOUT(mid);
+            continue;
+        }
+
+        // chunked-body トレイラーフィールド終端を探す
+        case PARSE_REQUEST_TRAILER_FIELD_END: {
+            VOUT(chunked_body.size());
+            VOUT(chunked_body.body());
+            parse_progress = PARSE_REQUEST_OVER;
             continue;
         }
 
@@ -127,7 +200,7 @@ void    RequestHTTP::feed_bytestring(char *bytes, size_t len) {
         default:
             throw http_error("not implemented yet", HTTP::STATUS_NOT_IMPLEMENTED);
         }
-    }
+    } while (len > 0);
 }
 
 bool    RequestHTTP::seek_reqline_start(size_t len) {
@@ -159,12 +232,6 @@ bool    RequestHTTP::seek_reqline_end(size_t len) {
 }
 
 void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
-    // DSOUT() << "* determined end_of_reqline *" << std::endl;
-    // DSOUT() << "end_of_reqline: " << end_of_reqline << std::endl;
-    // DSOUT() << "start_of_header: " << start_of_header << std::endl;
-    // DSOUT() << "* parsing reqline... *" << std::endl;
-    // DSOUT() << "\"" << raw_req_line << "\"" << std::endl;
-
     std::vector< byte_string > splitted = ParserHelper::split_by_sp(raw_req_line.begin(), raw_req_line.end());
 
     switch (splitted.size()) {
@@ -283,6 +350,63 @@ void    RequestHTTP::parse_header_line(const light_string& line) {
     header_holder.add_item(key, sval);
 }
 
+void    RequestHTTP::parse_chunk_size_line(const light_string& line) {
+    light_string    size_str = line.substr_while(HTTP::CharFilter::hexdig);
+    if (size_str.size() == 0) {
+        throw http_error("no size for chunk", HTTP::STATUS_BAD_REQUEST);
+    }
+    // chunk-size の解析
+    // chunk-size   = 1*HEXDIG
+    ps.current_chunk.size_str = size_str;
+    QVOUT(ps.current_chunk.size_str);
+    std::pair<bool, unsigned int> x = ParserHelper::xtou(size_str);
+    if (!x.first) {
+        throw http_error("invalid size for chunk", HTTP::STATUS_BAD_REQUEST);
+    }
+    ps.current_chunk.chunk_size = x.second;;
+    VOUT(ps.current_chunk.chunk_size);
+    // chunk-ext の解析(スルーするだけ)
+    // chunk-ext    = *( BWS ";" BWS chunk-ext-name [ BWS "=" BWS chunk-ext-val ] )
+    // chunk-ext-name = token
+    // chunk-ext-val  = token / quoted-string
+    light_string    rest = line.substr(size_str.size());
+    for (;;) {
+        QVOUT(rest);
+        rest = rest.substr_after(HTTP::CharFilter::bad_sp);
+        if (rest.size() == 0) {
+            DXOUT("away");
+            break;
+        }
+        if (rest[0] != ';') {
+            DXOUT("[KO] bad separator");
+            break;
+        }
+        rest = rest.substr_after(HTTP::CharFilter::bad_sp, 1);
+        QVOUT(rest);
+        const light_string chunk_ext_name = rest.substr_while(HTTP::CharFilter::tchar);
+        QVOUT(chunk_ext_name);
+        if (chunk_ext_name.size() == 0) {
+            DXOUT("[KO] no chunk_ext_name");
+            break;
+        }
+        rest = rest.substr(chunk_ext_name.size());
+        rest = rest.substr_after(HTTP::CharFilter::bad_sp);
+        QVOUT(rest);
+        if (rest.size() > 0 && rest[0] == '=') {
+            // chunk-ext-val がある
+            rest = rest.substr(1);
+            const light_string chunk_ext_val = ParserHelper::extract_quoted_or_token(rest);
+            QVOUT(chunk_ext_val);
+            if (chunk_ext_val.size() == 0) {
+                DXOUT("[KO] zero-width chunk_ext_val");
+                break;
+            }
+            rest = rest.substr(chunk_ext_val.size());
+        }
+    }
+
+}
+
 void    RequestHTTP::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     // TODO: ここで何を抽出すべきか洗い出す
@@ -299,15 +423,16 @@ void    RequestHTTP::extract_control_headers() {
 
 void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
     // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
-    const HeaderHTTPHolder::value_list_type *transfer_encodings = holder.get_vals(HeaderHTTP::transfer_encoding);
-    if (transfer_encodings && transfer_encodings->back() == "chunked") {
+    
+    if (transfer_encoding.currently_chunked) {
         // メッセージのヘッダにTransfer-Encodingが存在し, かつ一番最後のcodingがchunkedである場合
         // -> chunkによって長さが決まる
         DXOUT("by chunk");
+        is_body_chunked = true;
         return;
     }
 
-    if (!transfer_encodings) {
+    if (transfer_encoding.empty()) {
         // Transfer-Encodingがなく, Content-Lengthが不正である時
         // -> 回復不可能なエラー
         const byte_string *cl = holder.get_val(HeaderHTTP::content_length);
@@ -315,6 +440,7 @@ void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& 
         // -> Content-Length の値がボディの長さとなる.
         if (cl) {
             body_size = ParserHelper::stou(*cl);
+            is_body_chunked = false;
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
             DXOUT("body_size = " << body_size);
             return;
@@ -323,6 +449,7 @@ void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& 
 
     // ボディの長さは0.
     body_size = 0;
+    is_body_chunked = false;
     DXOUT("body_size is zero.");
 }
 void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holder) {
@@ -360,10 +487,13 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
 
     const HeaderHTTPHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::transfer_encoding);
     if (!tes) { return; }
+    int i = 0;
     for (HeaderHTTPHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
+        ++i;
+        VOUT(i);
         light_string    val_lstr = light_string(*it);
         for (;;) {
-            DXOUT("val_lstr: \"" << val_lstr << "\"");
+            QVOUT(val_lstr);
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
             if (val_lstr.size() == 0) {
                 DXOUT("away; sp only.");
@@ -376,10 +506,12 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
             }
 
             // 本体
-            DXOUT("tc_lstr: \"" << tc_lstr << "\"");
+            QVOUT(tc_lstr);
             HTTP::Term::TransferCoding  tc;
             tc.coding = tc_lstr.str();
+            QVOUT(tc.coding);
             transfer_encoding.transfer_codings.push_back(tc);
+            QVOUT(transfer_encoding.transfer_codings.back().coding);
             
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
@@ -388,7 +520,12 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
                 break;
             }
             // cat(sp_end) が "," か ";" かによって分岐
-            DXOUT("val_lstr[0]: " << val_lstr[0]);
+            QVOUT(val_lstr);
+            if (val_lstr[0] == ';') {
+                // parameterがはじまる
+                val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.transfer_codings.back());
+            }
+            QVOUT(val_lstr);
             if (val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
@@ -405,6 +542,7 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
     transfer_encoding.currently_chunked =
         !transfer_encoding.empty() &&
         transfer_encoding.current_coding().coding == "chunked";
+    QVOUT(transfer_encoding.transfer_codings.back().coding);
 }
 
 void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder& holder) {
@@ -756,6 +894,7 @@ RequestHTTP::light_string    RequestHTTP::ControlParams::extract_comment(light_s
                 if (paren == 0) {
                     DXOUT("finish comment");
                     val_lstr = val_lstr.substr(1);
+                    ++n;
                     break;
                 }
             } else if (c == '\\') {
@@ -807,58 +946,12 @@ RequestHTTP::light_string
         // > 引数名は、大文字・小文字の区別なしで定義されています。
         params_str = params_str.substr(key_lstr.size() + 1);
 
-        const light_string  value_str = params_str;
         byte_string         key_str = ParserHelper::normalize_header_key(key_lstr);
         DXOUT("key: \"" << key_str << "\"");
         {
-            //                  [key]            [value]
-            // parameter      = token "=" ( token / quoted-string )
-            if (HTTP::CharFilter::dquote.includes(value_str[0])) {
-                // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
-                // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
-                //                ;               !     #-[        ]-~
-                //                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
-                // obs-text       = %x80-FF ; extended ASCII
-                // quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
-                light_string::size_type i = 1;
-                bool    quoted = false;
-                for(;i < value_str.size(); ++i) {
-                    const HTTP::byte_type c = value_str[i];
-                    if (!quoted && HTTP::CharFilter::dquote.includes(c)) {
-                        // クオートされてないダブルクオート
-                        // -> ここで終わり
-                        break;
-                    }
-                    if (quoted && !HTTP::CharFilter::qdright.includes(c)) {
-                        // クオートの右がquoted_rightではない
-                        // -> 不適格
-                        DXOUT("[KO] not suitable for quote");
-                        return params_str.substr(params_str.size());
-                    }
-                    if (!quoted && HTTP::CharFilter::bslash.includes(c)) {
-                        // クオートされてないバックスラッシュ
-                        // -> クオートフラグ立てる
-                        quoted = true;
-                    } else {
-                        quoted = false;
-                    }
-                }
-                // DXOUT("quoted-string: \"" << light_string(value_str, 0, i + 1) << "\"");
-                list_str = value_str.substr(i + 1);
-                DXOUT("value: \"" << value_str.substr(0, i + 1) << "\"");
-                holder.store_list_item(key_str, value_str.substr(0, i + 1));
-            } else {
-                // token          = 1*tchar
-                const light_string::size_type value_end = value_str.find_first_not_of(HTTP::CharFilter::tchar);
-                if (value_end == 0) {
-                    DXOUT("[KO] empty value");
-                    return params_str.substr(params_str.size());
-                }
-                light_string just_value_str(value_str, 0, value_end);
-                DXOUT("value: \"" << just_value_str << "\"");
-                list_str = value_str.substr(value_end);
-                holder.store_list_item(key_str, just_value_str);
-            }
+            const light_string just_value_str = ParserHelper::extract_quoted_or_token(params_str);
+            holder.store_list_item(key_str, just_value_str);
+            list_str = params_str.substr(just_value_str.size());
         }
     }
     return list_str;
