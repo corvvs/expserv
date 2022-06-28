@@ -34,15 +34,22 @@ NAME_CLIENT		:= webclient
 NAME_SERVER		:= webserv
 NAMES 			:= $(NAME_CLIENT) $(NAME_SERVER)
 RM				:= rm -rf
+CF				:= clang-format -i
 
 .PHONY			:	all
 all				:	$(NAMES)
 
-$(NAME_SERVER):	$(OBJS_SERVER)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+cf_server:
+	$(CF) $(SRCS_SERVER)
 
-$(NAME_CLIENT):	$(OBJS_CLIENT)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+cf_client:
+	$(CF) $(SRCS_CLIENT)
+
+$(NAME_SERVER): cf_server $(OBJS_SERVER)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS_SERVER)
+
+$(NAME_CLIENT): cf_client $(OBJS_CLIENT)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS_CLIENT)
 
 clean:
 	$(RM) $(OBJS_SERVER) $(OBJS_CLIENT)
