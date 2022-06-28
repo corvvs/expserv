@@ -1,6 +1,7 @@
 #ifndef HTTP_HPP
 #define HTTP_HPP
 #include "test_common.hpp"
+#include "types.hpp"
 #include <iostream>
 #include <map>
 #include <string>
@@ -54,7 +55,7 @@ enum t_version {
 };
 
 typedef char char_type;
-typedef unsigned char byte_type;
+typedef u8t byte_type;
 // バイト列
 typedef std::basic_string<char_type> byte_string;
 // ヘッダのキーの型

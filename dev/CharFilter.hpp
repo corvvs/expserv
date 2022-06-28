@@ -12,7 +12,7 @@ namespace HTTP {
 // 単純な文字集合クラス
 class CharFilter {
 private:
-    unsigned char filter[32];
+    u64t filter[256 / sizeof(u64t) / 8];
 
 public:
     CharFilter(const byte_string &chars);
