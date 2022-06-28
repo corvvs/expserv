@@ -1,13 +1,13 @@
 #ifndef CONNECTION_HPP
-# define CONNECTION_HPP
-# include "socketconnected.hpp"
-# include "isocketlike.hpp"
-# include "iobserver.hpp"
-# include "irouter.hpp"
-# include "requesthttp.hpp"
-# include "responsehttp.hpp"
-# include <string>
-# include <iostream>
+#define CONNECTION_HPP
+#include "iobserver.hpp"
+#include "irouter.hpp"
+#include "isocketlike.hpp"
+#include "requesthttp.hpp"
+#include "responsehttp.hpp"
+#include "socketconnected.hpp"
+#include <iostream>
+#include <string>
 
 // コネクションオブジェクトの内部状態
 enum t_connection_phase {
@@ -26,7 +26,7 @@ enum t_connection_phase {
 // "準静的" = リクエストの内容次第で変更されうるが, それ以外(=時間変化など)によっては変わらない
 struct ConnectionAttribute {
     HTTP::t_version http_version;
-    bool            is_persistent;
+    bool is_persistent;
     t_time_epoch_ms timeout;
 
     ConnectionAttribute();
@@ -39,49 +39,49 @@ struct ConnectionAttribute {
 //  - リクエストの受信と解釈
 //  - レスポンスの送信
 //    - 生成は ルーティングクラス(IRouter) が行う
-class Connection: public ISocketLike {
+class Connection : public ISocketLike {
 private:
-    IRouter*            router_;
+    IRouter *router_;
     ConnectionAttribute attr;
 
-    t_connection_phase  phase;
-    bool                dying;
+    t_connection_phase phase;
+    bool dying;
 
-    SocketConnected*    sock;
+    SocketConnected *sock;
 
-    RequestHTTP*        current_req;
-    ResponseHTTP*       current_res;
+    RequestHTTP *current_req;
+    ResponseHTTP *current_res;
     // 最終操作時刻
-    t_time_epoch_ms     latest_operated_at;
+    t_time_epoch_ms latest_operated_at;
 
-    int                 started_;
+    int started_;
 
     // 直接呼び出し禁止
     // ConnectionオブジェクトはChannelオブジェクトによってのみ作成されて欲しいため
     Connection();
 
     // 最終操作時刻を更新する
-    void    touch();
+    void touch();
 
     // もう一度受信状態に戻る
-    void    ready_receiving(IObserver& observer);
+    void ready_receiving(IObserver &observer);
 
     // 送信状態に移る
-    void    ready_sending(IObserver& observer);
+    void ready_sending(IObserver &observer);
 
     // gracefulに接続を閉じるモードに移行する
-    void    ready_shutting_down(IObserver& observer);
+    void ready_shutting_down(IObserver &observer);
 
     // 次のupdateで接続を完全に閉じる
-    void    die(IObserver& observer);
+    void die(IObserver &observer);
 
 public:
-    Connection(IRouter* router, SocketConnected* sock_given);
+    Connection(IRouter *router, SocketConnected *sock_given);
     ~Connection();
 
-    t_fd    get_fd() const;
-    void    notify(IObserver& observer);
-    void    timeout(IObserver& observer, t_time_epoch_ms epoch);
+    t_fd get_fd() const;
+    void notify(IObserver &observer);
+    void timeout(IObserver &observer, t_time_epoch_ms epoch);
 };
 
 #endif

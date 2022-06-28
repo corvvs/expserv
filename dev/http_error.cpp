@@ -1,8 +1,7 @@
-# include "http_error.hpp"
+#include "http_error.hpp"
 
-http_error::http_error(const char *_Message, HTTP::t_status status)
-    :runtime_error(_Message), status_(status) {}
+http_error::http_error(const char *_Message, HTTP::t_status status) : runtime_error(_Message), status_(status) {}
 
-HTTP::t_status   http_error::get_status() const {
+HTTP::t_status http_error::get_status() const {
     return status_;
 }

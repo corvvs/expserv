@@ -2,23 +2,23 @@
 
 static int sockdomain(t_socket_domain d) {
     switch (d) {
-    case SD_IP4:
-        return AF_INET;
-    case SD_IP6:
-        return AF_INET6;
-    default:
-        throw std::runtime_error("unexpected asocket domain");
+        case SD_IP4:
+            return AF_INET;
+        case SD_IP6:
+            return AF_INET6;
+        default:
+            throw std::runtime_error("unexpected asocket domain");
     }
 }
 
 static int socktype(t_socket_type t) {
     switch (t) {
-    case ST_TCP:
-        return SOCK_STREAM;
-    case ST_UDP:
-        return SOCK_DGRAM;
-    default:
-        throw std::runtime_error("unexpected asocket type");
+        case ST_TCP:
+            return SOCK_STREAM;
+        case ST_UDP:
+            return SOCK_DGRAM;
+        default:
+            throw std::runtime_error("unexpected asocket type");
     }
 }
 
@@ -26,10 +26,7 @@ ASocket::ASocket() {
     throw std::runtime_error("forbidden");
 }
 
-ASocket::ASocket(
-    t_socket_domain sdomain,
-    t_socket_type stype
-): dying(false) {
+ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) : dying(false) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
@@ -39,34 +36,29 @@ ASocket::ASocket(
         throw std::runtime_error("failed to initialize asocket");
     }
     // DOUT() << "created asocket." << std::endl;
-    fd = sock;
+    fd     = sock;
     domain = sdomain;
-    type = stype;
+    type   = stype;
 
     int yes = 1;
-    setsockopt(sock,
-       SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
 }
 
-ASocket::ASocket(
-    t_fd sock_fd,
-    t_socket_domain sdomain,
-    t_socket_type stype
-): fd(sock_fd), dying(false) {
+ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) : fd(sock_fd), dying(false) {
     domain = sdomain;
-    type = stype;
+    type   = stype;
 }
 
-ASocket::ASocket(const ASocket& other) {
+ASocket::ASocket(const ASocket &other) {
     *this = other;
 }
 
-ASocket& ASocket::operator=(const ASocket& rhs) {
+ASocket &ASocket::operator=(const ASocket &rhs) {
     if (this != &rhs) {
-        fd = rhs.fd;
+        fd     = rhs.fd;
         domain = rhs.domain;
-        type = rhs.type;
-        dying = rhs.dying;
+        type   = rhs.type;
+        dying  = rhs.dying;
     }
     return *this;
 }
@@ -75,7 +67,7 @@ ASocket::~ASocket() {
     destroy();
 }
 
-void                ASocket::set_nonblock() {
+void ASocket::set_nonblock() {
     int rv;
     rv = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (rv < 0) {
@@ -83,26 +75,26 @@ void                ASocket::set_nonblock() {
     }
 }
 
-int                 ASocket::get_fd() const {
+int ASocket::get_fd() const {
     return fd;
 }
 
-t_socket_domain    ASocket::get_domain() const {
+t_socket_domain ASocket::get_domain() const {
     return domain;
 }
 
-t_socket_type      ASocket::get_type() const {
+t_socket_type ASocket::get_type() const {
     return type;
 }
 
-t_port      ASocket::get_port() const {
+t_port ASocket::get_port() const {
     return port;
 }
 
-bool      ASocket::get_dying() const {
+bool ASocket::get_dying() const {
     return dying;
 }
 
-void            ASocket::destroy() {
+void ASocket::destroy() {
     close(fd);
 }

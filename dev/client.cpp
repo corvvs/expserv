@@ -3,7 +3,7 @@
 #include <iostream>
 #include <sstream>
 
-void sendss(int i, SocketConnected* sock, std::stringstream& ss) {
+void sendss(int i, SocketConnected *sock, std::stringstream &ss) {
     usleep(rand() / 2000);
     std::string s = ss.str();
     sock->send(s.c_str(), s.length(), 0);

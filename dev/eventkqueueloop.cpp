@@ -1,6 +1,5 @@
 #include "eventkqueueloop.hpp"
 
-
 const int EventKqueueLoop::nev = 10;
 
 EventKqueueLoop::EventKqueueLoop() {
@@ -18,20 +17,20 @@ EventKqueueLoop::~EventKqueueLoop() {
     }
 }
 
-EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_socket_operation t) {
+EventKqueueLoop::t_kfilter EventKqueueLoop::filter(t_socket_operation t) {
     switch (t) {
-    case SHMT_READ:
-        return EVFILT_READ;
-    case SHMT_WRITE:
-        return EVFILT_WRITE;
-    case SHMT_EXCEPTION:
-        return EVFILT_EXCEPT;
-    default:
-        return 0;
+        case SHMT_READ:
+            return EVFILT_READ;
+        case SHMT_WRITE:
+            return EVFILT_WRITE;
+        case SHMT_EXCEPTION:
+            return EVFILT_EXCEPT;
+        default:
+            return 0;
     }
 }
 
-void    EventKqueueLoop::loop() {
+void EventKqueueLoop::loop() {
     while (1) {
         update();
 
@@ -41,50 +40,52 @@ void    EventKqueueLoop::loop() {
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (int i = 0; i < count; i++) {
-                int fd = evlist[i].ident;
-                ISocketLike* sock = sockmap[fd];
+                int fd            = evlist[i].ident;
+                ISocketLike *sock = sockmap[fd];
                 sock->timeout(*this, now);
             }
         } else {
             for (int i = 0; i < count; i++) {
-                int fd = evlist[i].ident;
-                ISocketLike* sock = sockmap[fd];
+                int fd            = evlist[i].ident;
+                ISocketLike *sock = sockmap[fd];
                 sock->notify(*this);
             }
         }
     }
 }
 
-void    EventKqueueLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
-    t_socket_reservation  pre = {socket, from, to};
+void EventKqueueLoop::reserve(ISocketLike *socket, t_socket_operation from, t_socket_operation to) {
+    t_socket_reservation pre = {socket, from, to};
     upqueue.push_back(pre);
 }
 
 // 次の kevent の前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventKqueueLoop::reserve_clear(ISocketLike* socket, t_socket_operation from) {
+void EventKqueueLoop::reserve_clear(ISocketLike *socket, t_socket_operation from) {
     reserve(socket, from, SHMT_NONE);
 }
 
 // 次の kevent の前に, このソケットを監視対象に追加する
-void    EventKqueueLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
+void EventKqueueLoop::reserve_set(ISocketLike *socket, t_socket_operation to) {
     reserve(socket, SHMT_NONE, to);
 }
 
 // 次の kevent の前に, このソケットの監視方法を変更する
-void    EventKqueueLoop::reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void EventKqueueLoop::reserve_transit(ISocketLike *socket, t_socket_operation from, t_socket_operation to) {
     reserve(socket, from, to);
 }
 
-void    EventKqueueLoop::update() {
-    std::vector< t_kevent > changelist;
+void EventKqueueLoop::update() {
+    std::vector<t_kevent> changelist;
     changelist.reserve(upqueue.size());
-    if (upqueue.size() == 0) { return; }
+    if (upqueue.size() == 0) {
+        return;
+    }
     int n = 0;
     for (update_queue::iterator it = upqueue.begin(); it != upqueue.end(); it++) {
-        t_kevent        ke;
-        ISocketLike*    sock = it->sock;
-        t_fd            fd = sock->get_fd();
+        t_kevent ke;
+        ISocketLike *sock = it->sock;
+        t_fd fd           = sock->get_fd();
         if (it->to == SHMT_NONE) {
             sockmap.erase(fd);
             delete sock;
@@ -96,13 +97,10 @@ void    EventKqueueLoop::update() {
         }
     }
     if (n > 0) {
-        errno = 0;
+        errno     = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
-            std::cout
-                << "errno: " << errno  << ", "
-                << changelist.size() << ", "
-                << n << ", " << count << std::endl;
+            std::cout << "errno: " << errno << ", " << changelist.size() << ", " << n << ", " << count << std::endl;
         }
     }
     upqueue.clear();

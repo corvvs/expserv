@@ -1,11 +1,11 @@
 #ifndef TIME_HPP
-# define TIME_HPP
-# include "types.hpp"
-# include <sys/time.h>
-# include <ctime>
+#define TIME_HPP
+#include "types.hpp"
+#include <ctime>
+#include <sys/time.h>
 
 namespace WSTime {
-    t_time_epoch_ms    get_epoch_ms();
+t_time_epoch_ms get_epoch_ms();
 }
 
 #endif

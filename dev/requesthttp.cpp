@@ -1,239 +1,255 @@
 #include "requesthttp.hpp"
 
-HTTP::t_method   discriminate_request_method(const HTTP::light_string& str) {
-    if (str == "GET")    { return HTTP::METHOD_GET; }
-    if (str == "POST")   { return HTTP::METHOD_POST; }
-    if (str == "DELETE") { return HTTP::METHOD_DELETE; }
+HTTP::t_method discriminate_request_method(const HTTP::light_string &str) {
+    if (str == "GET") {
+        return HTTP::METHOD_GET;
+    }
+    if (str == "POST") {
+        return HTTP::METHOD_POST;
+    }
+    if (str == "DELETE") {
+        return HTTP::METHOD_DELETE;
+    }
     throw http_error("unsupported method", HTTP::STATUS_METHOD_NOT_ALLOWED);
 }
 
-HTTP::t_version  discriminate_request_version(const HTTP::light_string& str) {
-    if (str == HTTP::version_str(HTTP::V_1_0)) { return HTTP::V_1_0; }
-    if (str == HTTP::version_str(HTTP::V_1_1)) { return HTTP::V_1_1; }
+HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
+    if (str == HTTP::version_str(HTTP::V_1_0)) {
+        return HTTP::V_1_0;
+    }
+    if (str == HTTP::version_str(HTTP::V_1_1)) {
+        return HTTP::V_1_1;
+    }
     throw http_error("unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
-RequestHTTP::ParserStatus::ParserStatus(): found_obs_fold(false) {}
+RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false) {}
 
-RequestHTTP::RequestHTTP():
-    mid(0),
-    cp()
-{
+RequestHTTP::RequestHTTP() : mid(0), cp() {
     this->ps.parse_progress = PARSE_REQUEST_REQLINE_START;
-    this->cp.http_method = HTTP::METHOD_UNKNOWN;
-    this->cp.http_version = HTTP::V_UNKNOWN;
+    this->cp.http_method    = HTTP::METHOD_UNKNOWN;
+    this->cp.http_version   = HTTP::V_UNKNOWN;
     bytebuffer.reserve(MAX_REQLINE_END);
 }
 
 RequestHTTP::~RequestHTTP() {}
 
-void    RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
+void RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
     bytebuffer.insert(bytebuffer.end(), bytes, bytes + feed_len);
     bool is_disconnected = feed_len == 0;
-    size_t len = 1;
+    size_t len           = 1;
     do {
         len = bytebuffer.length() - this->mid;
         switch (this->ps.parse_progress) {
-        case PARSE_REQUEST_REQLINE_START: {
+            case PARSE_REQUEST_REQLINE_START: {
 
-            // 開始行の開始位置を探す
-            if (!seek_reqline_start(len)) { return; }
-            this->ps.parse_progress = PARSE_REQUEST_REQLINE_END;
+                // 開始行の開始位置を探す
+                if (!seek_reqline_start(len)) {
+                    return;
+                }
+                this->ps.parse_progress = PARSE_REQUEST_REQLINE_END;
 
-            continue;
-        }
-
-        case PARSE_REQUEST_REQLINE_END: {
-
-            // 開始行の終了位置を探す
-            if (!seek_reqline_end(len)) { return; }
-            light_string raw_req_line(
-                bytebuffer,
-                this->ps.start_of_reqline,
-                this->ps.end_of_reqline);
-            // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
-            parse_reqline(raw_req_line);
-            this->ps.parse_progress = PARSE_REQUEST_HEADER_SECTION_END;
-
-            continue;
-        }
-
-        case PARSE_REQUEST_HEADER_SECTION_END: {
-            // ヘッダ部の終わりを探索する
-            // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
-            // mid以降についてCRLFを検索する:
-            // - 見つかった
-            //   - first == crlf_in_header.second である
-            //     -> あたり. このCRLFがヘッダの終わりを示す.
-            //   - そうでない
-            //     -> はずれ. このCRLFを crlf_in_header として続行.
-            // - 見つからなかった
-            //   -> もう一度受信する
-            IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-            this->mid = res.second;
-            if (res.is_invalid()) {
-                return ;
-            }
-            if (this->ps.crlf_in_header.second != res.first) {
-                // はずれ
-                this->ps.crlf_in_header = res;
                 continue;
             }
-            // あたり
-            this->ps.end_of_header = res.first;
-            this->ps.start_of_body = res.second;
-            {
-                // -> [start_of_header, end_of_header) を解析する
-                const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
-                parse_header_lines(header_lines, &this->header_holder);
-                extract_control_headers();
+
+            case PARSE_REQUEST_REQLINE_END: {
+
+                // 開始行の終了位置を探す
+                if (!seek_reqline_end(len)) {
+                    return;
+                }
+                light_string raw_req_line(bytebuffer, this->ps.start_of_reqline, this->ps.end_of_reqline);
+                // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
+                parse_reqline(raw_req_line);
+                this->ps.parse_progress = PARSE_REQUEST_HEADER_SECTION_END;
+
+                continue;
             }
-            VOUT(this->cp.is_body_chunked);
-            if (this->cp.is_body_chunked) {
-                this->ps.parse_progress = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
-                this->ps.start_of_current_chunk = this->ps.start_of_body;
-            } else {
-                this->ps.parse_progress = PARSE_REQUEST_BODY;
+
+            case PARSE_REQUEST_HEADER_SECTION_END: {
+                // ヘッダ部の終わりを探索する
+                // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
+                // mid以降についてCRLFを検索する:
+                // - 見つかった
+                //   - first == crlf_in_header.second である
+                //     -> あたり. このCRLFがヘッダの終わりを示す.
+                //   - そうでない
+                //     -> はずれ. このCRLFを crlf_in_header として続行.
+                // - 見つからなかった
+                //   -> もう一度受信する
+                IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
+                this->mid      = res.second;
+                if (res.is_invalid()) {
+                    return;
+                }
+                if (this->ps.crlf_in_header.second != res.first) {
+                    // はずれ
+                    this->ps.crlf_in_header = res;
+                    continue;
+                }
+                // あたり
+                this->ps.end_of_header = res.first;
+                this->ps.start_of_body = res.second;
+                {
+                    // -> [start_of_header, end_of_header) を解析する
+                    const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
+                    parse_header_lines(header_lines, &this->header_holder);
+                    extract_control_headers();
+                }
+                VOUT(this->cp.is_body_chunked);
+                if (this->cp.is_body_chunked) {
+                    this->ps.parse_progress         = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
+                    this->ps.start_of_current_chunk = this->ps.start_of_body;
+                } else {
+                    this->ps.parse_progress = PARSE_REQUEST_BODY;
+                }
+                continue;
             }
-            continue;
-        }
 
-        case PARSE_REQUEST_BODY: {
+            case PARSE_REQUEST_BODY: {
 
-            // TODO: 切断対応
-            this->mid += len;
-            // DSOUT() << "parsed_body_size: " << parsed_body_size() << std::endl;
-            // DSOUT() << "start_of_body: " << start_of_body << std::endl;
-            // DSOUT() << "content_length: " << content_length << std::endl;
-            // - 接続が切れていたら
-            //   -> ここまでをbodyとする
-            // - content-lengthが不定なら
-            //   -> 続行
-            // - 受信済みサイズが content-length を下回っていたら
-            //   -> 続行
-            // - (else) 受信済みサイズが content-length 以上なら
-            //   -> 受信済みサイズ = this->mid - start_of_body が content-length になるよう調整
-
-            if (parsed_body_size() < this->cp.body_size) { return; }
-
-            this->ps.end_of_body = this->cp.body_size + this->ps.start_of_body;;
-            this->mid = this->ps.end_of_body;
-            this->ps.parse_progress = PARSE_REQUEST_OVER;
-            continue;
-        }
-
-        // chunked-body サイズ行終端を探す
-        case PARSE_REQUEST_CHUNK_SIZE_LINE_END: {
-            IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-            this->mid = res.second;
-            if (res.is_invalid()) { return ; }
-            // [start_of_current_chunk, res.first) がサイズ行のはず.
-
-            light_string chunk_size_line(bytebuffer, this->ps.start_of_current_chunk, res.first);
-            QVOUT(chunk_size_line);
-            parse_chunk_size_line(chunk_size_line);
-            // TODO: サイズ行の解析
-            VOUT(this->ps.current_chunk.chunk_size);
-            if (this->ps.current_chunk.chunk_size == 0) {
-                // 最終チャンクなら PARSE_REQUEST_TRAILER_FIELD_END に飛ばす
-                this->ps.parse_progress = PARSE_REQUEST_TRAILER_FIELD_END;
-                this->ps.crlf_in_header = res;
-                this->ps.start_of_trailer_field = res.second;
-                VOUT(chunked_body.size());
-                VOUT(chunked_body.body());
-                VOUT(this->ps.crlf_in_header.first);
-                VOUT(this->ps.crlf_in_header.second);
-                VOUT(this->mid);
-            } else {
-                this->ps.start_of_current_chunk_data = this->mid;
-                this->ps.parse_progress = PARSE_REQUEST_CHUNK_DATA_END;
-            }
-            continue;
-        }
-
-        // chunked-body チャンク終端を探す
-        case PARSE_REQUEST_CHUNK_DATA_END: {
-            const byte_string::size_type received_data_size = this->mid - this->ps.start_of_current_chunk_data;
-            const byte_string::size_type data_end = this->ps.current_chunk.chunk_size - received_data_size;
-            if (data_end > len) {
+                // TODO: 切断対応
                 this->mid += len;
-                return;
-            }
-            this->mid += data_end;
-            this->ps.current_chunk.chunk_str = light_string(bytebuffer, this->ps.start_of_current_chunk, this->mid);
-            this->ps.current_chunk.data_str = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
-            QVOUT(this->ps.current_chunk.chunk_str);
-            QVOUT(this->ps.current_chunk.data_str);
-            this->ps.parse_progress = PARSE_REQUEST_CHUNK_DATA_CRLF;
-            continue;
-        }
+                // DSOUT() << "parsed_body_size: " << parsed_body_size() << std::endl;
+                // DSOUT() << "start_of_body: " << start_of_body << std::endl;
+                // DSOUT() << "content_length: " << content_length << std::endl;
+                // - 接続が切れていたら
+                //   -> ここまでをbodyとする
+                // - content-lengthが不定なら
+                //   -> 続行
+                // - 受信済みサイズが content-length を下回っていたら
+                //   -> 続行
+                // - (else) 受信済みサイズが content-length 以上なら
+                //   -> 受信済みサイズ = this->mid - start_of_body が content-length になるよう調整
 
-        /// チャンク終端の次がCRLFであることを確認する
-        case PARSE_REQUEST_CHUNK_DATA_CRLF: {
-            // CRLF|CR|LF
-            VOUT(this->mid);
-            IndexRange nl = ParserHelper::find_leading_crlf(bytebuffer, this->mid, len, is_disconnected);
-            if (nl.is_invalid()) {
-                throw http_error("invalid chunk-data end?", HTTP::STATUS_BAD_REQUEST);
-            }
-            if (nl.length() == 0) {
-                return;
-            }
-            this->ps.current_chunk.data_str = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
-            this->ps.parse_progress = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
-            this->mid = nl.second;
-            this->ps.start_of_current_chunk = this->mid;
-            chunked_body.add_chunk(this->ps.current_chunk);
-            VOUT(this->mid);
-            continue;
-        }
+                if (parsed_body_size() < this->cp.body_size) {
+                    return;
+                }
 
-        // chunked-body トレイラーフィールド終端を探す
-        case PARSE_REQUEST_TRAILER_FIELD_END: {
-
-            // ヘッダ部の終わりを探索する
-            // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
-            // mid以降についてCRLFを検索する:
-            // - 見つかった
-            //   - first == crlf_in_header.second である
-            //     -> あたり. このCRLFがヘッダの終わりを示す.
-            //   - そうでない
-            //     -> はずれ. このCRLFを crlf_in_header として続行.
-            // - 見つからなかった
-            //   -> もう一度受信する
-            IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-            this->mid = res.second;
-            if (res.is_invalid()) {
-                return ;
-            }
-            if (this->ps.crlf_in_header.second != res.first) {
-                // はずれ
-                this->ps.crlf_in_header = res;
+                this->ps.end_of_body = this->cp.body_size + this->ps.start_of_body;
+                ;
+                this->mid               = this->ps.end_of_body;
+                this->ps.parse_progress = PARSE_REQUEST_OVER;
                 continue;
             }
-            // あたり
-            this->ps.end_of_trailer_field = res.first;
-            {
-                VOUT(this->ps.start_of_trailer_field);
-                VOUT(this->ps.end_of_trailer_field);
-                const light_string trailer_field_lines(bytebuffer, this->ps.start_of_trailer_field, this->ps.end_of_trailer_field);
-                parse_header_lines(trailer_field_lines, NULL);
+
+            // chunked-body サイズ行終端を探す
+            case PARSE_REQUEST_CHUNK_SIZE_LINE_END: {
+                IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
+                this->mid      = res.second;
+                if (res.is_invalid()) {
+                    return;
+                }
+                // [start_of_current_chunk, res.first) がサイズ行のはず.
+
+                light_string chunk_size_line(bytebuffer, this->ps.start_of_current_chunk, res.first);
+                QVOUT(chunk_size_line);
+                parse_chunk_size_line(chunk_size_line);
+                // TODO: サイズ行の解析
+                VOUT(this->ps.current_chunk.chunk_size);
+                if (this->ps.current_chunk.chunk_size == 0) {
+                    // 最終チャンクなら PARSE_REQUEST_TRAILER_FIELD_END に飛ばす
+                    this->ps.parse_progress         = PARSE_REQUEST_TRAILER_FIELD_END;
+                    this->ps.crlf_in_header         = res;
+                    this->ps.start_of_trailer_field = res.second;
+                    VOUT(chunked_body.size());
+                    VOUT(chunked_body.body());
+                    VOUT(this->ps.crlf_in_header.first);
+                    VOUT(this->ps.crlf_in_header.second);
+                    VOUT(this->mid);
+                } else {
+                    this->ps.start_of_current_chunk_data = this->mid;
+                    this->ps.parse_progress              = PARSE_REQUEST_CHUNK_DATA_END;
+                }
+                continue;
             }
-            this->ps.parse_progress = PARSE_REQUEST_OVER;
-            continue;
-        }
 
-        case PARSE_REQUEST_OVER: {
-            return;
-        }
+            // chunked-body チャンク終端を探す
+            case PARSE_REQUEST_CHUNK_DATA_END: {
+                const byte_string::size_type received_data_size = this->mid - this->ps.start_of_current_chunk_data;
+                const byte_string::size_type data_end = this->ps.current_chunk.chunk_size - received_data_size;
+                if (data_end > len) {
+                    this->mid += len;
+                    return;
+                }
+                this->mid += data_end;
+                this->ps.current_chunk.chunk_str = light_string(bytebuffer, this->ps.start_of_current_chunk, this->mid);
+                this->ps.current_chunk.data_str
+                    = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
+                QVOUT(this->ps.current_chunk.chunk_str);
+                QVOUT(this->ps.current_chunk.data_str);
+                this->ps.parse_progress = PARSE_REQUEST_CHUNK_DATA_CRLF;
+                continue;
+            }
 
-        default:
-            throw http_error("not implemented yet", HTTP::STATUS_NOT_IMPLEMENTED);
+            /// チャンク終端の次がCRLFであることを確認する
+            case PARSE_REQUEST_CHUNK_DATA_CRLF: {
+                // CRLF|CR|LF
+                VOUT(this->mid);
+                IndexRange nl = ParserHelper::find_leading_crlf(bytebuffer, this->mid, len, is_disconnected);
+                if (nl.is_invalid()) {
+                    throw http_error("invalid chunk-data end?", HTTP::STATUS_BAD_REQUEST);
+                }
+                if (nl.length() == 0) {
+                    return;
+                }
+                this->ps.current_chunk.data_str
+                    = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
+                this->ps.parse_progress         = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
+                this->mid                       = nl.second;
+                this->ps.start_of_current_chunk = this->mid;
+                chunked_body.add_chunk(this->ps.current_chunk);
+                VOUT(this->mid);
+                continue;
+            }
+
+            // chunked-body トレイラーフィールド終端を探す
+            case PARSE_REQUEST_TRAILER_FIELD_END: {
+
+                // ヘッダ部の終わりを探索する
+                // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
+                // mid以降についてCRLFを検索する:
+                // - 見つかった
+                //   - first == crlf_in_header.second である
+                //     -> あたり. このCRLFがヘッダの終わりを示す.
+                //   - そうでない
+                //     -> はずれ. このCRLFを crlf_in_header として続行.
+                // - 見つからなかった
+                //   -> もう一度受信する
+                IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
+                this->mid      = res.second;
+                if (res.is_invalid()) {
+                    return;
+                }
+                if (this->ps.crlf_in_header.second != res.first) {
+                    // はずれ
+                    this->ps.crlf_in_header = res;
+                    continue;
+                }
+                // あたり
+                this->ps.end_of_trailer_field = res.first;
+                {
+                    VOUT(this->ps.start_of_trailer_field);
+                    VOUT(this->ps.end_of_trailer_field);
+                    const light_string trailer_field_lines(
+                        bytebuffer, this->ps.start_of_trailer_field, this->ps.end_of_trailer_field);
+                    parse_header_lines(trailer_field_lines, NULL);
+                }
+                this->ps.parse_progress = PARSE_REQUEST_OVER;
+                continue;
+            }
+
+            case PARSE_REQUEST_OVER: {
+                return;
+            }
+
+            default:
+                throw http_error("not implemented yet", HTTP::STATUS_NOT_IMPLEMENTED);
         }
     } while (len > 0);
 }
 
-bool    RequestHTTP::seek_reqline_start(size_t len) {
+bool RequestHTTP::seek_reqline_start(size_t len) {
     DXOUT("* determining start_of_reqline... *");
     size_t s_o_s = ParserHelper::ignore_crlf(bytebuffer, this->mid, len);
     this->mid += s_o_s;
@@ -245,13 +261,15 @@ bool    RequestHTTP::seek_reqline_start(size_t len) {
     return true;
 }
 
-bool    RequestHTTP::seek_reqline_end(size_t len) {
+bool RequestHTTP::seek_reqline_end(size_t len) {
     // DSOUT() << "* determining end_of_reqline... *" << std::endl;
     IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-    this->mid = res.second;
-    if (res.is_invalid()) { return false; }
+    this->mid      = res.second;
+    if (res.is_invalid()) {
+        return false;
+    }
     // CRLFが見つかった
-    this->ps.end_of_reqline = res.first;
+    this->ps.end_of_reqline  = res.first;
     this->ps.start_of_header = this->mid;
     // -> end_of_reqline が8192バイト以内かどうか調べる。
     if (MAX_REQLINE_END <= this->ps.end_of_reqline) {
@@ -261,8 +279,8 @@ bool    RequestHTTP::seek_reqline_end(size_t len) {
     return true;
 }
 
-void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
-    std::vector< light_string > splitted = ParserHelper::split_by_sp(raw_req_line);
+void RequestHTTP::parse_reqline(const light_string &raw_req_line) {
+    std::vector<light_string> splitted = ParserHelper::split_by_sp(raw_req_line);
 
     switch (splitted.size()) {
         case 2:
@@ -288,13 +306,10 @@ void    RequestHTTP::parse_reqline(const light_string& raw_req_line) {
     DXOUT("* parsed reqline *");
 }
 
-void    RequestHTTP::parse_header_lines(const light_string& lines, HeaderHTTPHolder* holder) const {
+void RequestHTTP::parse_header_lines(const light_string &lines, HeaderHTTPHolder *holder) const {
     light_string rest(lines);
-    DXOUT(std::endl
-        << "==============" << std::endl
-        << rest << std::endl
-        << "==============");
-    while(true) {
+    DXOUT(std::endl << "==============" << std::endl << rest << std::endl << "==============");
+    while (true) {
         QVOUT(rest);
         const IndexRange res = ParserHelper::find_crlf_header_value(rest);
         if (res.is_invalid()) {
@@ -311,12 +326,12 @@ void    RequestHTTP::parse_header_lines(const light_string& lines, HeaderHTTPHol
     }
 }
 
-
-void    RequestHTTP::parse_header_line(const light_string& line, HeaderHTTPHolder* holder) const {
+void RequestHTTP::parse_header_line(const light_string &line, HeaderHTTPHolder *holder) const {
 
     const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
     if (key.length() == line.length()) {
-        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx は無視して処理を続けます。
+        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
+        // は無視して処理を続けます。
         throw http_error("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
     }
     // ":"があった -> ":"の前後をキーとバリューにする
@@ -324,7 +339,8 @@ void    RequestHTTP::parse_header_line(const light_string& line, HeaderHTTPHolde
         throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
     }
     light_string val = line.substr(key.length() + 1);
-    // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。 串は、下流に転送する前に空白を削除しなければなりません。
+    // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。
+    // 串は、下流に転送する前に空白を削除しなければなりません。
     light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
     if (key_tail + 1 != key.length()) {
         throw http_error("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
@@ -341,8 +357,8 @@ void    RequestHTTP::parse_header_line(const light_string& line, HeaderHTTPHolde
     }
 }
 
-void    RequestHTTP::parse_chunk_size_line(const light_string& line) {
-    light_string    size_str = line.substr_while(HTTP::CharFilter::hexdig);
+void RequestHTTP::parse_chunk_size_line(const light_string &line) {
+    light_string size_str = line.substr_while(HTTP::CharFilter::hexdig);
     if (size_str.size() == 0) {
         throw http_error("no size for chunk", HTTP::STATUS_BAD_REQUEST);
     }
@@ -354,13 +370,14 @@ void    RequestHTTP::parse_chunk_size_line(const light_string& line) {
     if (!x.first) {
         throw http_error("invalid size for chunk", HTTP::STATUS_BAD_REQUEST);
     }
-    this->ps.current_chunk.chunk_size = x.second;;
+    this->ps.current_chunk.chunk_size = x.second;
+    ;
     VOUT(this->ps.current_chunk.chunk_size);
     // chunk-ext の解析(スルーするだけ)
     // chunk-ext    = *( BWS ";" BWS chunk-ext-name [ BWS "=" BWS chunk-ext-val ] )
     // chunk-ext-name = token
     // chunk-ext-val  = token / quoted-string
-    light_string    rest = line.substr(size_str.size());
+    light_string rest = line.substr(size_str.size());
     for (;;) {
         QVOUT(rest);
         rest = rest.substr_after(HTTP::CharFilter::bad_sp);
@@ -385,7 +402,7 @@ void    RequestHTTP::parse_chunk_size_line(const light_string& line) {
         QVOUT(rest);
         if (rest.size() > 0 && rest[0] == '=') {
             // chunk-ext-val がある
-            rest = rest.substr(1);
+            rest                             = rest.substr(1);
             const light_string chunk_ext_val = ParserHelper::extract_quoted_or_token(rest);
             QVOUT(chunk_ext_val);
             if (chunk_ext_val.size() == 0) {
@@ -395,10 +412,9 @@ void    RequestHTTP::parse_chunk_size_line(const light_string& line) {
             rest = rest.substr(chunk_ext_val.size());
         }
     }
-
 }
 
-void    RequestHTTP::extract_control_headers() {
+void RequestHTTP::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     // TODO: ここで何を抽出すべきか洗い出す
 
@@ -412,9 +428,9 @@ void    RequestHTTP::extract_control_headers() {
     this->cp.determine_via(header_holder);
 }
 
-void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& holder) {
+void RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder &holder) {
     // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
-    
+
     if (transfer_encoding.currently_chunked) {
         // メッセージのヘッダにTransfer-Encodingが存在し, かつ一番最後のcodingがchunkedである場合
         // -> chunkによって長さが決まる
@@ -430,7 +446,7 @@ void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& 
         // Transfer-Encodingがなく, Content-Lengthが正当である場合
         // -> Content-Length の値がボディの長さとなる.
         if (cl) {
-            body_size = ParserHelper::stou(*cl);
+            body_size       = ParserHelper::stou(*cl);
             is_body_chunked = false;
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
             DXOUT("body_size = " << body_size);
@@ -439,11 +455,11 @@ void    RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder& 
     }
 
     // ボディの長さは0.
-    body_size = 0;
+    body_size       = 0;
     is_body_chunked = false;
     DXOUT("body_size is zero.");
 }
-void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holder) {
+void RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
     const HeaderHTTPHolder::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
     if (!hosts || hosts->size() == 0) {
@@ -465,7 +481,7 @@ void    RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder& holde
     pack_host(header_host, lhost);
 }
 
-void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHolder& holder) {
+void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHolder &holder) {
     // https://httpwg.org/specs/rfc7230.html#header.transfer-encoding
     // Transfer-Encoding  = 1#transfer-coding
     // transfer-coding    = "chunked"
@@ -477,12 +493,14 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
     // transfer-parameter = token BWS "=" BWS ( token / quoted-string )
 
     const HeaderHTTPHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::transfer_encoding);
-    if (!tes) { return; }
+    if (!tes) {
+        return;
+    }
     int i = 0;
     for (HeaderHTTPHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
         ++i;
         VOUT(i);
-        light_string    val_lstr = light_string(*it);
+        light_string val_lstr = light_string(*it);
         for (;;) {
             QVOUT(val_lstr);
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
@@ -498,12 +516,12 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
 
             // 本体
             QVOUT(tc_lstr);
-            HTTP::Term::TransferCoding  tc;
+            HTTP::Term::TransferCoding tc;
             tc.coding = tc_lstr.str();
             QVOUT(tc.coding);
             transfer_encoding.transfer_codings.push_back(tc);
             QVOUT(transfer_encoding.transfer_codings.back().coding);
-            
+
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
             if (val_lstr.size() == 0) {
@@ -530,14 +548,16 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
             }
         }
     }
-    transfer_encoding.currently_chunked =
-        !transfer_encoding.empty() &&
-        transfer_encoding.current_coding().coding == "chunked";
+    transfer_encoding.currently_chunked
+        = !transfer_encoding.empty() && transfer_encoding.current_coding().coding == "chunked";
     QVOUT(transfer_encoding.transfer_codings.back().coding);
 }
 
-void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder& holder) {
-    // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type header field is not present, the recipient MAY either assume a media type of "application/octet-stream" ([RFC2046], Section 4.5.1) or examine the data to determine its type.
+void RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder &holder) {
+    // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that
+    // message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type
+    // header field is not present, the recipient MAY either assume a media type of "application/octet-stream"
+    // ([RFC2046], Section 4.5.1) or examine the data to determine its type.
     //
     // Content-Type = media-type
     // media-type = type "/" subtype *( OWS ";" OWS parameter )
@@ -561,9 +581,9 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
         DXOUT("[KO] not separated by /: \"" << lct << "\"");
         return;
     }
-    light_string    type_str(lct, 0, type_end);
+    light_string type_str(lct, 0, type_end);
     light_string::size_type subtype_end = lct.find_first_not_of(HTTP::CharFilter::tchar, type_end + 1);
-    light_string    subtype_str(lct, type_end + 1, subtype_end);
+    light_string subtype_str(lct, type_end + 1, subtype_end);
     if (subtype_str.size() == 0) {
         DXOUT("[KO] no subtype after /: \"" << lct << "\"");
         return;
@@ -582,17 +602,19 @@ void    RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolde
     // DXOUT("continuation: \"" << continuation << "\"");
 }
 
-void    RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder& holder) {
+void RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder &holder) {
     // Connection        = 1#connection-option
     // connection-option = token
     const HeaderHTTPHolder::value_list_type *cons = holder.get_vals(HeaderHTTP::connection);
-    if (!cons) { return; }
+    if (!cons) {
+        return;
+    }
     if (cons->size() == 0) {
         DXOUT("[KO] list exists, but it's empty.");
         return;
     }
     for (HeaderHTTPHolder::value_list_type::const_iterator it = cons->begin(); it != cons->end(); ++it) {
-        light_string    val_lstr = light_string(*it);
+        light_string val_lstr = light_string(*it);
         for (;;) {
             DXOUT("val_lstr: \"" << val_lstr << "\"");
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
@@ -637,7 +659,7 @@ void    RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder&
     DXOUT("close: " << connection.will_close() << ", keep-alive: " << connection.will_keep_alive());
 }
 
-void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
+void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.te
     // TE        = #t-codings
     // t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
@@ -653,9 +675,11 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
     // transfer-parameter = token BWS "=" BWS ( token / quoted-string )
 
     const HeaderHTTPHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::te);
-    if (!tes) { return; }
+    if (!tes) {
+        return;
+    }
     for (HeaderHTTPHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
-        light_string    val_lstr = light_string(*it);
+        light_string val_lstr = light_string(*it);
         for (;;) {
             DXOUT("val_lstr: \"" << val_lstr << "\"");
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
@@ -671,10 +695,10 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
 
             // 本体
             DXOUT("tc_lstr: \"" << tc_lstr << "\"");
-            HTTP::Term::TransferCoding  tc = HTTP::Term::TransferCoding::init();
-            tc.coding = tc_lstr.str();
+            HTTP::Term::TransferCoding tc = HTTP::Term::TransferCoding::init();
+            tc.coding                     = tc_lstr.str();
             te.transfer_codings.push_back(tc);
-            
+
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
             if (val_lstr.size() == 0) {
@@ -683,7 +707,7 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
             }
 
             DXOUT("val_lstr[0]: " << val_lstr[0]);
-            HTTP::Term::TransferCoding& last_coding = te.transfer_codings.back();
+            HTTP::Term::TransferCoding &last_coding = te.transfer_codings.back();
             if (val_lstr[0] == ';') {
                 // parameterがはじまる
                 val_lstr = decompose_semicoron_separated_kvlist(val_lstr, last_coding);
@@ -691,8 +715,7 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
 
             // rankがあるなら, それはセミコロン分割リストの一部として解釈されるはず -> q 値をチェック.
             if (!te.transfer_codings.empty()) {
-                HTTP::IDictHolder::parameter_dict::iterator qit
-                    = last_coding.parameters.find("q");
+                HTTP::IDictHolder::parameter_dict::iterator qit = last_coding.parameters.find("q");
                 if (qit != last_coding.parameters.end()) {
                     DXOUT("rank: \"" << qit->second << "\"");
                     if (HTTP::Validator::is_valid_rank(qit->second)) {
@@ -718,26 +741,28 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder& holder) {
     }
 }
 
-void RequestHTTP::ControlParams::determine_upgrade(const HeaderHTTPHolder& holder) {
+void RequestHTTP::ControlParams::determine_upgrade(const HeaderHTTPHolder &holder) {
     // Upgrade          = 1#protocol
     // protocol         = protocol-name ["/" protocol-version]
     // protocol-name    = token
     // protocol-version = token
     const HeaderHTTPHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::upgrade);
-    if (!elems) { return; }
+    if (!elems) {
+        return;
+    }
     for (HeaderHTTPHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
-        light_string    val_lstr = light_string(*it);
-        for (;val_lstr.size() > 0;) {
-            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
+        light_string val_lstr = light_string(*it);
+        for (; val_lstr.size() > 0;) {
+            val_lstr          = val_lstr.substr_after(HTTP::CharFilter::sp);
             light_string name = val_lstr.substr_while(HTTP::CharFilter::tchar);
             if (name.size() == 0) {
                 // 値なし
                 DXOUT("[KO] no name");
                 break;
             }
-            HTTP::Term::Protocol    protocol;
+            HTTP::Term::Protocol protocol;
             protocol.name = name;
-            val_lstr = val_lstr.substr(name.size());
+            val_lstr      = val_lstr.substr(name.size());
             if (val_lstr.size() > 0 && val_lstr[0] == '/') {
                 // versionがある
                 light_string version = val_lstr.substr_while(HTTP::CharFilter::tchar, 1);
@@ -761,21 +786,25 @@ void RequestHTTP::ControlParams::determine_upgrade(const HeaderHTTPHolder& holde
     }
 }
 
-void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder& holder) {
+void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder &holder) {
     // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
     // received-protocol = [ protocol-name "/" ] protocol-version
     // received-by       = ( uri-host [ ":" port ] ) / pseudonym
-    // pseudonym         = token            
+    // pseudonym         = token
     // protocol-name     = token
     // protocol-version  = token
     const HeaderHTTPHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::via);
-    if (!elems) { return; }
+    if (!elems) {
+        return;
+    }
     for (HeaderHTTPHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
-        light_string    val_lstr = light_string(*it);
+        light_string val_lstr = light_string(*it);
         for (;;) {
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
             QVOUT(val_lstr);
-            if (val_lstr.size() == 0) { break; }
+            if (val_lstr.size() == 0) {
+                break;
+            }
             const light_string p1 = val_lstr.substr_while(HTTP::CharFilter::tchar);
             if (p1.size() == 0) {
                 DXOUT("[KO] zero-width token(1): " << val_lstr.qstr());
@@ -788,24 +817,24 @@ void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder& holder) {
                     DXOUT("[KO] invalid separator: " << val_lstr.qstr());
                     break;
                 }
-                p2 = val_lstr.substr_while(HTTP::CharFilter::tchar, 1);
+                p2       = val_lstr.substr_while(HTTP::CharFilter::tchar, 1);
                 val_lstr = val_lstr.substr(1 + p2.size());
             }
-            HTTP::Term::Received    r;
-            HTTP::Term::Protocol&   p = r.protocol;
+            HTTP::Term::Received r;
+            HTTP::Term::Protocol &p = r.protocol;
             if (p2.size() == 0) {
                 p.version = p1;
             } else {
-                p.name = p1;
+                p.name    = p1;
                 p.version = p2;
             }
             DXOUT("protocol: name=" << p.name.qstr() << ", version=" << p.version.qstr());
             light_string rws = val_lstr.substr_while(HTTP::CharFilter::sp);
             if (rws.size() >= 1) {
-                val_lstr = val_lstr.substr(rws.size());
+                val_lstr        = val_lstr.substr(rws.size());
                 light_string by = val_lstr.substr_before(HTTP::CharFilter::sp | ",");
                 DXOUT("by: " << by.qstr());
-                bool is_valid_as_uri_host =  HTTP::Validator::is_uri_host(by);
+                bool is_valid_as_uri_host = HTTP::Validator::is_uri_host(by);
                 if (!is_valid_as_uri_host) {
                     DXOUT("[KO] not valid as host: " << by.qstr());
                     break;
@@ -829,43 +858,42 @@ void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder& holder) {
     }
 }
 
-void    RequestHTTP::ControlParams::pack_host(HTTP::Term::Host& host_item, const light_string& lhost) {
+void RequestHTTP::ControlParams::pack_host(HTTP::Term::Host &host_item, const light_string &lhost) {
     host_item.value = lhost.str();
     // この時点で lhost は Host: として妥当
     // -> 1文字目が [ かどうかで ipv6(vfuture) かどうかを判別する.
     if (lhost[0] == '[') {
         // ipv6 or ipvfuture
         const light_string host = lhost.substr_before("]", 1);
-        host_item.host = host.str();
+        host_item.host          = host.str();
         if (host.size() < lhost.size()) {
             host_item.port = lhost.substr(1 + host.size() + 2).str();
         }
     } else {
         // ipv4 or reg-name
         const light_string host = lhost.substr_before(":");
-        host_item.host = host.str();
+        host_item.host          = host.str();
         if (host.size() < lhost.size()) {
             light_string port = lhost.substr(host.size() + 1);
-            host_item.port = port.str();
+            host_item.port    = port.str();
         }
     }
     DXOUT("host: \"" << host_item.host << "\"");
     DXOUT("port: \"" << host_item.port << "\"");
 }
 
-
-RequestHTTP::light_string    RequestHTTP::ControlParams::extract_comment(light_string& val_lstr) {
+RequestHTTP::light_string RequestHTTP::ControlParams::extract_comment(light_string &val_lstr) {
     // comment        = "(" *( ctext / quoted-pair / comment ) ")"
     // ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
     //                ; HTAB + SP + 表示可能文字, ただしカッコとバッスラを除く
     if (val_lstr.size() == 0 || val_lstr[0] != '(') {
         return val_lstr.substr(0, 0);
     }
-    int paren = 0;
-    bool quoted = false;
+    int paren                 = 0;
+    bool quoted               = false;
     light_string comment_from = val_lstr;
     light_string::size_type n = 0;
-    for (;val_lstr.size() > 0; ++n, val_lstr = val_lstr.substr(1)) {
+    for (; val_lstr.size() > 0; ++n, val_lstr = val_lstr.substr(1)) {
         const char c = val_lstr[0];
         if (quoted) {
             if (!HTTP::CharFilter::qdright.includes(c)) {
@@ -900,14 +928,12 @@ RequestHTTP::light_string    RequestHTTP::ControlParams::extract_comment(light_s
 }
 
 RequestHTTP::light_string
-    RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(
-        const light_string& kvlist_str,
-        HTTP::IDictHolder& holder
-    ) {
+RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(const light_string &kvlist_str,
+                                                                 HTTP::IDictHolder &holder) {
     light_string list_str = kvlist_str;
     // *( OWS ";" OWS parameter )
     for (;;) {
-        light_string  params_str = list_str;
+        light_string params_str = list_str;
         DXOUT("params_str: \"" << params_str << "\"");
         params_str = params_str.substr_after(HTTP::CharFilter::sp);
         if (params_str.size() == 0) {
@@ -937,7 +963,7 @@ RequestHTTP::light_string
         // > 引数名は、大文字・小文字の区別なしで定義されています。
         params_str = params_str.substr(key_lstr.size() + 1);
 
-        byte_string         key_str = ParserHelper::normalize_header_key(key_lstr);
+        byte_string key_str = ParserHelper::normalize_header_key(key_lstr);
         DXOUT("key: \"" << key_str << "\"");
         {
             const light_string just_value_str = ParserHelper::extract_quoted_or_token(params_str);
@@ -948,27 +974,23 @@ RequestHTTP::light_string
     return list_str;
 }
 
-// RequestHTTP::light_string   RequestHTTP::ControlParams::extract_comment(const light_string& str) {
-    
-// }
-
-bool    RequestHTTP::is_ready_to_navigate() const {
+bool RequestHTTP::is_ready_to_navigate() const {
     return this->ps.parse_progress >= PARSE_REQUEST_BODY;
 }
 
-bool    RequestHTTP::is_ready_to_respond() const {
+bool RequestHTTP::is_ready_to_respond() const {
     return this->ps.parse_progress >= PARSE_REQUEST_OVER;
 }
 
-size_t  RequestHTTP::receipt_size() const {
+size_t RequestHTTP::receipt_size() const {
     return bytebuffer.length();
 }
 
-size_t  RequestHTTP::parsed_body_size() const {
+size_t RequestHTTP::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
-size_t  RequestHTTP::parsed_size() const {
+size_t RequestHTTP::parsed_size() const {
     return this->mid;
 }
 
@@ -976,7 +998,7 @@ HTTP::t_version RequestHTTP::get_http_version() const {
     return this->cp.http_version;
 }
 
-RequestHTTP::byte_string    RequestHTTP::get_body() const {
+RequestHTTP::byte_string RequestHTTP::get_body() const {
     if (cp.is_body_chunked) {
         return chunked_body.body();
     } else {
@@ -984,7 +1006,7 @@ RequestHTTP::byte_string    RequestHTTP::get_body() const {
     }
 }
 
-bool            RequestHTTP::should_keep_in_touch() const {
+bool RequestHTTP::should_keep_in_touch() const {
     // TODO: 仮実装
     return false;
 }

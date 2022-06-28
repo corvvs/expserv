@@ -1,13 +1,12 @@
 #include "eventselectloop.hpp"
 
-void    EventSelectLoop::destroy_all(EventSelectLoop::socket_map &m) {
-    for (EventSelectLoop::socket_map::iterator  it = m.begin(); it != m.end(); it++) {
+void EventSelectLoop::destroy_all(EventSelectLoop::socket_map &m) {
+    for (EventSelectLoop::socket_map::iterator it = m.begin(); it != m.end(); it++) {
         delete it->second;
     }
 }
 
-EventSelectLoop::EventSelectLoop() {
-}
+EventSelectLoop::EventSelectLoop() {}
 
 EventSelectLoop::~EventSelectLoop() {
     destroy_all(read_map);
@@ -15,7 +14,7 @@ EventSelectLoop::~EventSelectLoop() {
     destroy_all(exception_map);
 }
 
-void    EventSelectLoop::watch(ISocketLike* socket, t_socket_operation map_type) {
+void EventSelectLoop::watch(ISocketLike *socket, t_socket_operation map_type) {
     switch (map_type) {
         case SHMT_READ:
             read_map[socket->get_fd()] = socket;
@@ -31,7 +30,7 @@ void    EventSelectLoop::watch(ISocketLike* socket, t_socket_operation map_type)
     }
 }
 
-void    EventSelectLoop::unwatch(ISocketLike* socket, t_socket_operation map_type) {
+void EventSelectLoop::unwatch(ISocketLike *socket, t_socket_operation map_type) {
     switch (map_type) {
         case SHMT_READ:
             read_map.erase(socket->get_fd());
@@ -48,7 +47,7 @@ void    EventSelectLoop::unwatch(ISocketLike* socket, t_socket_operation map_typ
 }
 
 // ソケットマップ sockmap をFD集合 socketset に変換する
-void    EventSelectLoop::prepare_fd_set(socket_map& sockmap, fd_set *sockset) {
+void EventSelectLoop::prepare_fd_set(socket_map &sockmap, fd_set *sockset) {
     FD_ZERO(sockset);
     for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
         FD_SET(it->first, sockset);
@@ -57,10 +56,10 @@ void    EventSelectLoop::prepare_fd_set(socket_map& sockmap, fd_set *sockset) {
 
 // sockmap 中のソケットがFD集合 socketset に含まれるかどうかを調べ,
 // 含まれている場合はソケットの notify メソッドを実行する
-void    EventSelectLoop::scan_fd_set(socket_map& sockmap, fd_set *sockset, t_time_epoch_ms now) {
+void EventSelectLoop::scan_fd_set(socket_map &sockmap, fd_set *sockset, t_time_epoch_ms now) {
     for (EventSelectLoop::socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
         if (now == 0) {
-                it->second->timeout(*this, now);
+            it->second->timeout(*this, now);
         } else {
             if (FD_ISSET(it->first, sockset)) {
                 it->second->notify(*this);
@@ -70,10 +69,10 @@ void    EventSelectLoop::scan_fd_set(socket_map& sockmap, fd_set *sockset, t_tim
 }
 
 // イベントループ
-void    EventSelectLoop::loop() {
-    fd_set  read_set;
-    fd_set  write_set;
-    fd_set  exception_set;
+void EventSelectLoop::loop() {
+    fd_set read_set;
+    fd_set write_set;
+    fd_set exception_set;
     struct timeval tv;
 
     while (1) {
@@ -82,8 +81,7 @@ void    EventSelectLoop::loop() {
         prepare_fd_set(write_map, &write_set);
         prepare_fd_set(exception_map, &exception_set);
 
-
-        tv.tv_sec = 10;
+        tv.tv_sec  = 10;
         tv.tv_usec = 0;
 
         t_fd max_fd = -1;
@@ -97,7 +95,7 @@ void    EventSelectLoop::loop() {
             max_fd = std::max(max_fd, exception_map.rbegin()->first);
         }
 
-        int count = select( max_fd + 1, &read_set, &write_set, &exception_set, &tv);
+        int count = select(max_fd + 1, &read_set, &write_set, &exception_set, &tv);
         if (count < 0) {
             DXOUT(strerror(errno));
             throw std::runtime_error("select error");
@@ -115,29 +113,29 @@ void    EventSelectLoop::loop() {
     }
 }
 
-void    EventSelectLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
-    t_socket_reservation  pre = {socket, from, to};
+void EventSelectLoop::reserve(ISocketLike *socket, t_socket_operation from, t_socket_operation to) {
+    t_socket_reservation pre = {socket, from, to};
     up_queue.push_back(pre);
 }
 
 // 次のselectの前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventSelectLoop::reserve_clear(ISocketLike* socket, t_socket_operation from) {
+void EventSelectLoop::reserve_clear(ISocketLike *socket, t_socket_operation from) {
     reserve(socket, from, SHMT_NONE);
 }
 
 // 次のselectの前に, このソケットを監視対象に追加する
-void    EventSelectLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
+void EventSelectLoop::reserve_set(ISocketLike *socket, t_socket_operation to) {
     reserve(socket, SHMT_NONE, to);
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
-void    EventSelectLoop::reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void EventSelectLoop::reserve_transit(ISocketLike *socket, t_socket_operation from, t_socket_operation to) {
     reserve(socket, from, to);
 }
 
 // ソケットの監視状態変更予約を実施する
-void    EventSelectLoop::update() {
+void EventSelectLoop::update() {
     for (EventSelectLoop::update_queue::iterator it = up_queue.begin(); it != up_queue.end(); it++) {
         if (it->from != SHMT_NONE) {
             unwatch(it->sock, it->from);

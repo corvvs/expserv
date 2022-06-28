@@ -1,7 +1,7 @@
 #ifndef IROUTER_HPP
-# define IROUTER_HPP
-# include "requesthttp.hpp"
-# include "responsehttp.hpp"
+#define IROUTER_HPP
+#include "requesthttp.hpp"
+#include "responsehttp.hpp"
 
 // [ルータインターフェース]
 // [責務]
@@ -9,16 +9,13 @@
 // - 与えられたHTTPエラーからエラーレスポンスを作成して返すこと
 class IRouter {
 public:
-    virtual                 ~IRouter() {};
+    virtual ~IRouter(){};
 
     // リクエストからレスポンスを生成する
-    virtual ResponseHTTP*   route(RequestHTTP* request) = 0;
+    virtual ResponseHTTP *route(RequestHTTP *request) = 0;
 
     // HTTPエラーからレスポンスを生成する
-    virtual ResponseHTTP*   respond_error(
-        RequestHTTP* request,
-        http_error error
-    ) = 0;
+    virtual ResponseHTTP *respond_error(RequestHTTP *request, http_error error) = 0;
 };
 
 #endif
