@@ -69,10 +69,6 @@ HTTP::CharFilter HTTP::CharFilter::operator-(const CharFilter &rhs) const {
 
 void HTTP::CharFilter::fill(const byte_string &chars) {
     memset(filter, 0, OCTETS);
-    VOUT(ELEMS);
-    VOUT(OCTETS);
-    VOUT(BITS_IN_ELEM);
-    VOUT(BITS_IN_ELEM - 1);
     for (byte_string::size_type i = 0; i < chars.size(); ++i) {
         byte_type c                = chars[i];
         unsigned int element_index = c / BITS_IN_ELEM;
