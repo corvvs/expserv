@@ -30,7 +30,7 @@ void ResponseHTTP::render() {
     // bodyのサイズをcontent-lengthとして出力
     if (header_dict.find(HeaderHTTP::content_length) == header_dict.end()) {
         header_list.insert(header_list.begin(),
-                           HTTP::header_kvpair_type(HeaderHTTP::content_length, ParserHelper::utos(body.length())));
+                           HTTP::header_kvpair_type(HeaderHTTP::content_length, ParserHelper::utos(body.size())));
     }
     // ヘッダ
     for (std::vector<HTTP::header_kvpair_type>::iterator it = header_list.begin(); it != header_list.end(); it++) {
@@ -47,7 +47,7 @@ const ResponseHTTP::byte_string &ResponseHTTP::get_message_text() const {
 }
 
 const char *ResponseHTTP::get_unsent_head() const {
-    return message_text.c_str() + sent_size;
+    return &(message_text.front()) + sent_size;
 }
 
 void ResponseHTTP::mark_sent(ssize_t sent) {
@@ -55,13 +55,13 @@ void ResponseHTTP::mark_sent(ssize_t sent) {
         return;
     }
     sent_size += sent;
-    if (message_text.length() < sent_size) {
-        sent_size = message_text.length();
+    if (message_text.size() < sent_size) {
+        sent_size = message_text.size();
     }
 }
 
 size_t ResponseHTTP::get_unsent_size() const {
-    return message_text.length() - sent_size;
+    return message_text.size() - sent_size;
 }
 
 bool ResponseHTTP::is_over_sending() const {

@@ -8,23 +8,23 @@
 #include <string>
 
 namespace HeaderHTTP {
-const std::string host              = "host";
-const std::string connection        = "connection";
-const std::string cookie            = "cookie";
-const std::string set_cookie        = "set-cookie";
-const std::string pragma            = "pragma";
-const std::string user_agent        = "user_agent";
-const std::string cache_control     = "cache-control";
-const std::string authorization     = "authorization";
-const std::string www_authenticate  = "www-authenticate";
-const std::string keep_alive        = "keep-alive";
-const std::string content_type      = "content-type";
-const std::string content_length    = "content-length";
-const std::string transfer_encoding = "transfer-encoding";
-const std::string te                = "te";
-const std::string vary              = "vary";
-const std::string upgrade           = "upgrade";
-const std::string via               = "via";
+const HTTP::byte_string host              = HTTP::strfy("host");
+const HTTP::byte_string connection        = HTTP::strfy("connection");
+const HTTP::byte_string cookie            = HTTP::strfy("cookie");
+const HTTP::byte_string set_cookie        = HTTP::strfy("set-cookie");
+const HTTP::byte_string pragma            = HTTP::strfy("pragma");
+const HTTP::byte_string user_agent        = HTTP::strfy("user_agent");
+const HTTP::byte_string cache_control     = HTTP::strfy("cache-control");
+const HTTP::byte_string authorization     = HTTP::strfy("authorization");
+const HTTP::byte_string www_authenticate  = HTTP::strfy("www-authenticate");
+const HTTP::byte_string keep_alive        = HTTP::strfy("keep-alive");
+const HTTP::byte_string content_type      = HTTP::strfy("content-type");
+const HTTP::byte_string content_length    = HTTP::strfy("content-length");
+const HTTP::byte_string transfer_encoding = HTTP::strfy("transfer-encoding");
+const HTTP::byte_string te                = HTTP::strfy("te");
+const HTTP::byte_string vary              = HTTP::strfy("vary");
+const HTTP::byte_string upgrade           = HTTP::strfy("upgrade");
+const HTTP::byte_string via               = HTTP::strfy("via");
 } // namespace HeaderHTTP
 
 // あるヘッダキーの属性

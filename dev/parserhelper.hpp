@@ -15,11 +15,11 @@ namespace ParserHelper {
 typedef HTTP::byte_string byte_string;
 typedef HTTP::light_string light_string;
 
-const byte_string SP                 = " ";
-const byte_string OWS                = " \t";
-const byte_string HEADER_KV_SPLITTER = ":";
-const byte_string CRLF               = "\r\n";
-const byte_string LF                 = "\n";
+const byte_string SP                 = HTTP::strfy(" ");
+const byte_string OWS                = HTTP::strfy(" \t");
+const byte_string HEADER_KV_SPLITTER = HTTP::strfy(":");
+const byte_string CRLF               = HTTP::strfy("\r\n");
+const byte_string LF                 = HTTP::strfy("\n");
 
 // LF, または CRLF を見つける.
 // 見つかった場合, LFまたはCRLFの [開始位置, 終了位置の次) のペアを(絶対位置で)返す.
@@ -54,6 +54,7 @@ IndexRange find_leading_crlf(const byte_string &str, ssize_t from, ssize_t len, 
 std::vector<byte_string> split_by_sp(byte_string::const_iterator first, byte_string::const_iterator last);
 std::vector<light_string> split_by_sp(const light_string &str);
 
+std::vector<HTTP::light_string> split(const HTTP::light_string &lstr, const char *charset);
 std::vector<HTTP::light_string> split(const HTTP::light_string &lstr, const byte_string &charset);
 
 byte_string normalize_header_key(const byte_string &key);

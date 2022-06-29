@@ -80,11 +80,11 @@ void HeaderHTTPHolder::add_item(const light_string &key, const light_string &val
     while (true) {
         IndexRange obs_fold = ParserHelper::find_obs_fold(pval, movement, val.length() - movement);
         if (obs_fold.is_invalid()) {
-            sval.append(pval, movement, obs_fold.second - movement);
+            sval.insert(sval.end(), pval.begin() + movement, pval.begin() + obs_fold.second);
             break;
         }
-        sval.append(pval, movement, obs_fold.first - movement);
-        sval.append(ParserHelper::SP);
+        sval.insert(sval.end(), pval.begin() + movement, pval.begin() + obs_fold.first);
+        sval += ParserHelper::SP;
         VOUT(obs_fold);
         // TODO: obs-foldを検知したことをリクエストに通知する必要がある
         // -> holder に持たせておけばよさそう

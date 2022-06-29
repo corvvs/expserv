@@ -8,7 +8,7 @@
 namespace HTTP {
 class IDictHolder {
 public:
-    typedef std::string parameter_key_type;
+    typedef HTTP::byte_string parameter_key_type;
     typedef HTTP::light_string parameter_value_type;
     typedef std::map<parameter_key_type, parameter_value_type> parameter_dict;
     virtual ~IDictHolder() {}

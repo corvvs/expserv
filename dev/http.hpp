@@ -5,6 +5,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <vector>
 
 // 全体で共通して使うenum, 型, 定数, フリー関数など
 
@@ -57,7 +58,9 @@ enum t_version {
 typedef char char_type;
 typedef u8t byte_type;
 // バイト列
-typedef std::basic_string<char_type> byte_string;
+typedef std::vector<char_type> byte_string;
+typedef std::string::size_type size_type;
+const size_type npos = std::string::npos;
 // ヘッダのキーの型
 typedef byte_string header_key_type;
 // ヘッダの値の型
@@ -98,6 +101,18 @@ extern const byte_string ws;
 extern const byte_string crlf;
 extern const byte_string lf;
 } // namespace Charset
+
+byte_string strfy(const std::string &str);
+
+size_type find(const byte_string &hay, const byte_string &needle);
+
 } // namespace HTTP
+
+std::ostream &operator<<(std::ostream &ost, const HTTP::byte_string &f);
+bool operator==(const HTTP::byte_string &lhs, const char *rhs);
+bool operator==(const char *lhs, const HTTP::byte_string &rhs);
+HTTP::byte_string operator+(const HTTP::byte_string &lhs, const HTTP::byte_string &rhs);
+HTTP::byte_string &operator+=(HTTP::byte_string &lhs, const HTTP::byte_string &rhs);
+HTTP::byte_string operator+(const HTTP::byte_string &lhs, const char *rhs);
 
 #endif

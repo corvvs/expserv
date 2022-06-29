@@ -4,8 +4,7 @@
 #include "IndexRange.hpp"
 #include <algorithm>
 #include <string>
-
-const std::string blank_str = "";
+#include <vector>
 
 // 別のstringの一部分をiteratorペアとして参照する軽量string
 // C++17以降にある string_view と思えば良いか
@@ -14,12 +13,12 @@ template <class T>
 class LightString {
 public:
     typedef T element;
-    typedef std::basic_string<T> string_class;
+    typedef std::vector<T> string_class;
     typedef HTTP::CharFilter filter_type;
     typedef typename string_class::iterator iterator;
     typedef typename string_class::const_iterator const_iterator;
     typedef typename string_class::size_type size_type;
-    static const typename string_class::size_type npos = string_class::npos;
+    static const typename string_class::size_type npos = std::string::npos;
     typedef typename string_class::reference reference;
     typedef typename string_class::const_reference const_reference;
 
@@ -35,11 +34,11 @@ private:
     size_type last;
 
 public:
-    LightString() : base(&blank_str) {
-        first = last = blank_str.size();
+    LightString() : base(NULL) {
+        first = last = 0;
     }
 
-    LightString(const string_class &str) : base(&str), first(0), last(str.length()) {}
+    LightString(const string_class &str) : base(&str), first(0), last(str.size()) {}
 
     LightString(const string_class &str, const_iterator f, const_iterator l)
         : base(&str)
@@ -85,7 +84,7 @@ public:
     // std::string を生成
     string_class str() const {
         if (!base || first == last) {
-            return "";
+            return HTTP::strfy("");
         }
         QVOUT(*base);
         VOUT(first);
@@ -95,7 +94,7 @@ public:
 
     // ダブルクオートで囲んだ std::string を生成
     string_class qstr() const {
-        return "\"" + str() + "\"";
+        return HTTP::strfy("\"") + str() + HTTP::strfy("\"");
     }
 
     size_type size() const {
@@ -127,6 +126,9 @@ public:
     }
 
     element operator[](size_type pos) {
+        VOUT(base);
+        VOUT(first);
+        VOUT(pos);
         return (*base)[first + pos];
     }
 
@@ -216,6 +218,10 @@ public:
         return npos;
     }
 
+    size_type find(const char *str, size_type pos = 0) const {
+        return find(HTTP::strfy(str), pos);
+    }
+
     // `str`が最後に出現する位置(= 先頭文字のインデックス)を返す
     // `pos`が指定された場合, 位置`pos`以降のみを検索する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
@@ -231,6 +237,10 @@ public:
             }
         }
         return npos;
+    }
+
+    size_type rfind(const char *str, size_type pos = 0) const {
+        return rfind(HTTP::strfy(str), pos);
     }
 
     // 指定した位置`pos`から始まる(最大)長さ`n`の区間を参照する LightString を生成して返す
@@ -349,18 +359,51 @@ std::ostream &operator<<(std::ostream &out, const LightString<T> &ls) {
 
 template <class T>
 bool operator==(const LightString<T> &lhs, const LightString<T> &rhs) {
-    return lhs.get_base().compare(lhs.get_first(), lhs.length(), rhs.length(), rhs.get_base().c_str() + rhs.get_first())
-           == 0;
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+    for (typename LightString<T>::size_type i = 0; i < lhs.size(); ++i) {
+        if (lhs[i] != rhs[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <class T>
+bool operator==(const LightString<T> &lhs, const std::vector<T> &rhs) {
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+    for (typename LightString<T>::size_type i = 0; i < lhs.size(); ++i) {
+        if (lhs[i] != rhs[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 template <class T>
 bool operator==(const LightString<T> &lhs, const std::basic_string<T> &rhs) {
-    return lhs.get_base().compare(lhs.get_first(), lhs.length(), rhs) == 0;
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+    for (typename LightString<T>::size_type i = 0; i < lhs.size(); ++i) {
+        if (lhs[i] != rhs[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 template <class T>
 bool operator==(const LightString<T> &lhs, const char *rhs) {
-    return strncmp(lhs.get_base().c_str() + lhs.get_first(), rhs, lhs.length()) == 0;
+    for (typename LightString<T>::size_type i = 0; i < lhs.size(); ++i) {
+        if (!rhs[i] || lhs[i] != rhs[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 #endif

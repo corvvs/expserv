@@ -39,7 +39,7 @@ void RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
     bool is_disconnected = feed_len == 0;
     size_t len           = 1;
     do {
-        len = bytebuffer.length() - this->mid;
+        len = bytebuffer.size() - this->mid;
         switch (this->ps.parse_progress) {
             case PARSE_REQUEST_REQLINE_START: {
 
@@ -715,7 +715,7 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder &holder) {
 
             // rankがあるなら, それはセミコロン分割リストの一部として解釈されるはず -> q 値をチェック.
             if (!te.transfer_codings.empty()) {
-                HTTP::IDictHolder::parameter_dict::iterator qit = last_coding.parameters.find("q");
+                HTTP::IDictHolder::parameter_dict::iterator qit = last_coding.parameters.find(HTTP::strfy("q"));
                 if (qit != last_coding.parameters.end()) {
                     DXOUT("rank: \"" << qit->second << "\"");
                     if (HTTP::Validator::is_valid_rank(qit->second)) {
@@ -983,7 +983,7 @@ bool RequestHTTP::is_ready_to_respond() const {
 }
 
 size_t RequestHTTP::receipt_size() const {
-    return bytebuffer.length();
+    return bytebuffer.size();
 }
 
 size_t RequestHTTP::parsed_body_size() const {
@@ -1002,7 +1002,7 @@ RequestHTTP::byte_string RequestHTTP::get_body() const {
     if (cp.is_body_chunked) {
         return chunked_body.body();
     } else {
-        return byte_string(bytebuffer, this->ps.start_of_body, this->ps.end_of_body);
+        return byte_string(bytebuffer.begin() + this->ps.start_of_body, bytebuffer.begin() + this->ps.end_of_body);
     }
 }
 

@@ -8,7 +8,7 @@ HTTP::CharFilter::CharFilter(const byte_string &chars) {
 }
 
 HTTP::CharFilter::CharFilter(const char *chars) {
-    fill(byte_string(chars));
+    fill(byte_string(chars, chars + strlen(chars)));
 }
 
 HTTP::CharFilter::CharFilter(byte_type from, byte_type to) {

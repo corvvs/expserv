@@ -10,7 +10,7 @@ ChunkedBody::byte_string ChunkedBody::body() const {
     byte_string rv;
     rv.reserve(size());
     for (unsigned int i = 0; i < chunks.size(); ++i) {
-        rv.append(chunks[i].data_str.begin(), chunks[i].data_str.end());
+        rv.insert(rv.end(), chunks[i].data_str.begin(), chunks[i].data_str.end());
     }
     return rv;
 }

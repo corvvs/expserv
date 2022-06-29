@@ -86,7 +86,7 @@ ssize_t ParserHelper::ignore_crlf(const byte_string &str, ssize_t from, ssize_t 
 }
 
 bool ParserHelper::is_sp(char c) {
-    return SP.find(c) != std::string::npos;
+    return std::find(SP.begin(), SP.end(), c) != SP.end();
 }
 
 ssize_t ParserHelper::ignore_sp(const byte_string &str, ssize_t from, ssize_t len) {
@@ -138,7 +138,7 @@ IndexRange ParserHelper::find_leading_crlf(const byte_string &str, ssize_t from,
 
 std::vector<ParserHelper::byte_string> ParserHelper::split_by_sp(ParserHelper::byte_string::const_iterator first,
                                                                  ParserHelper::byte_string::const_iterator last) {
-    typedef std::basic_string<char> str_type;
+    typedef ParserHelper::byte_string str_type;
     std::vector<str_type> rv;
     str_type::size_type len       = std::distance(first, last);
     str_type::size_type i         = 0;
@@ -174,6 +174,10 @@ std::vector<ParserHelper::light_string> ParserHelper::split_by_sp(const light_st
     return rv;
 }
 
+std::vector<HTTP::light_string> ParserHelper::split(const HTTP::light_string &lstr, const char *charset) {
+    return lstr.split(charset);
+}
+
 std::vector<HTTP::light_string> ParserHelper::split(const HTTP::light_string &lstr, const byte_string &charset) {
     return lstr.split(charset);
 }
@@ -188,14 +192,15 @@ ParserHelper::byte_string ParserHelper::normalize_header_key(const HTTP::light_s
 
 unsigned int ParserHelper::stou(const byte_string &str) {
     std::stringstream ss;
-    byte_string r;
+    std::string rr;
     unsigned int v;
 
     ss << str;
     ss >> v;
     ss.clear();
     ss << v;
-    ss >> r;
+    ss >> rr;
+    byte_string r(HTTP::strfy(rr));
     if (str != r) {
         throw std::runtime_error("failed to convert string to int");
     }
@@ -204,12 +209,13 @@ unsigned int ParserHelper::stou(const byte_string &str) {
 
 std::pair<bool, unsigned int> ParserHelper::xtou(const HTTP::light_string &str) {
     unsigned int n             = 0;
-    const HTTP::byte_string xs = "0123456789abcdef";
+    const HTTP::byte_string xs = HTTP::strfy("0123456789abcdef");
     unsigned int max_val       = std::numeric_limits<unsigned int>::max();
     for (HTTP::light_string::size_type i = 0; i < str.size(); ++i) {
-        char c                         = str[i];
-        HTTP::byte_string::size_type j = xs.find(tolower(c));
-        if (j == HTTP::byte_string::npos) {
+        char c                               = str[i];
+        HTTP::byte_string::const_iterator it = std::find(xs.begin(), xs.end(), (HTTP::char_type)tolower(c));
+        HTTP::byte_string::size_type j       = it != xs.end() ? std::distance(xs.begin(), it) : HTTP::npos;
+        if (j == HTTP::npos) {
             return std::pair<bool, unsigned int>(false, n);
         }
         // n * xs.size() + j > std::numeric_limits<int>::max();
@@ -228,7 +234,7 @@ unsigned int ParserHelper::stou(const HTTP::light_string &str) {
 ParserHelper::byte_string ParserHelper::utos(unsigned int u) {
     std::stringstream ss;
     ss << u;
-    return ss.str();
+    return HTTP::strfy(ss.str());
 }
 
 unsigned int ParserHelper::quality_to_u(HTTP::light_string &quality) {

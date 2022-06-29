@@ -1,7 +1,7 @@
 #ifndef ISOCKETLIKE_HPP
 #define ISOCKETLIKE_HPP
-#include "socket_type.hpp"
 #include "iobserver.hpp"
+#include "socket_type.hpp"
 #include "types.hpp"
 
 class IObserver;

@@ -19,7 +19,7 @@ const HTTP::Term::TransferCoding &HTTP::CH::TransferEncoding::current_coding() c
     return transfer_codings.back();
 }
 
-const HTTP::byte_string HTTP::CH::ContentType::default_value = "application/octet-stream";
+const HTTP::byte_string HTTP::CH::ContentType::default_value = HTTP::strfy("application/octet-stream");
 
 void HTTP::CH::ContentType::store_list_item(const parameter_key_type &key, const parameter_value_type &val) {
     parameters[key] = val;

@@ -6,7 +6,7 @@ bool HTTP::Validator::is_valid_header_host(const light_string &str) {
 
     byte_string::size_type ket = str.find_last_of("]");
     byte_string::size_type sep = str.find_last_of(":", ket);
-    if (sep != byte_string::npos && 0 < sep && str[sep - 1] != ':') {
+    if (sep != npos && 0 < sep && str[sep - 1] != ':') {
         // ":"がある -> portとしての妥当性チェック
         if (!is_port(str.substr(sep + 1))) {
             DXOUT("non digit char in port part");
