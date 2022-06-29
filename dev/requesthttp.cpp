@@ -535,10 +535,10 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
                 val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.transfer_codings.back());
             }
             QVOUT(val_lstr);
-            if (val_lstr[0] == ',') {
+            if (val_lstr.size() > 0 && val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
-            } else if (val_lstr[0] == ';') {
+            } else if (val_lstr.size() > 0 && val_lstr[0] == ';') {
                 // parameterがはじまる
                 val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.transfer_codings.back());
             } else {
@@ -729,6 +729,10 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder &holder) {
                 }
             }
 
+            if (val_lstr.size() == 0) {
+                DXOUT("away");
+                break;
+            }
             if (val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
