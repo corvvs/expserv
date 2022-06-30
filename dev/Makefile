@@ -8,6 +8,7 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					eventkqueueloop.cpp\
 					channel.cpp\
 					connection.cpp\
+					cgi.cpp\
 					requesthttp.cpp\
 					responsehttp.cpp\
 					parserhelper.cpp\

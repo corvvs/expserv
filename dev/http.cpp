@@ -79,8 +79,12 @@ const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
     }
 }
 
-HTTP::byte_string HTTP::strfy(const std::string &str) {
+HTTP::byte_string HTTP::strfy(const char_string &str) {
     return HTTP::byte_string(str.begin(), str.end());
+}
+
+HTTP::char_string HTTP::restrfy(const byte_string &str) {
+    return HTTP::char_string(str.begin(), str.end());
 }
 
 HTTP::size_type HTTP::find(const byte_string &hay, const byte_string &needle) {

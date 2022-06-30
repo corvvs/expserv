@@ -59,6 +59,7 @@ typedef char char_type;
 typedef u8t byte_type;
 // バイト列
 typedef std::vector<char_type> byte_string;
+typedef std::basic_string<char_type> char_string;
 typedef std::string::size_type size_type;
 const size_type npos = std::string::npos;
 // ヘッダのキーの型
@@ -102,7 +103,8 @@ extern const byte_string crlf;
 extern const byte_string lf;
 } // namespace Charset
 
-byte_string strfy(const std::string &str);
+byte_string strfy(const char_string &str);
+char_string restrfy(const byte_string &str);
 
 size_type find(const byte_string &hay, const byte_string &needle);
 
