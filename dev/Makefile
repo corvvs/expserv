@@ -2,6 +2,7 @@ CXXFLAGS		:=	-Wall -Wextra -Werror -std=c++98 --pedantic -g -fsanitize=address
 SRCS_SERVER		:=	server.cpp asocket.cpp\
 					socketlistening.cpp\
 					socketconnected.cpp\
+					SocketUNIX.cpp\
 					eventselectloop.cpp\
 					eventpollloop.cpp\
 					eventkqueueloop.cpp\

@@ -13,9 +13,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-enum t_socket_domain { SD_IP4, SD_IP6 };
+enum t_socket_domain { SD_IP4, SD_IP6, SD_UNIX };
 
-enum t_socket_type { ST_TCP, ST_UDP };
+enum t_socket_type { ST_TCP, ST_UDP, ST_STREAM };
 
 typedef int t_fd;
 typedef uint16_t t_port;
