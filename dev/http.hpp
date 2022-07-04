@@ -103,7 +103,9 @@ extern const byte_string crlf;
 extern const byte_string lf;
 } // namespace Charset
 
+// 文字列をbyte_stringに変換する
 byte_string strfy(const char_string &str);
+// byte_stringを文字列に変換する
 char_string restrfy(const byte_string &str);
 
 size_type find(const byte_string &hay, const byte_string &needle);

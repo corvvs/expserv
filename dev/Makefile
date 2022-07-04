@@ -1,5 +1,7 @@
 CXXFLAGS		:=	-Wall -Wextra -Werror -std=c++98 --pedantic -g -fsanitize=address
-SRCS_SERVER		:=	server.cpp asocket.cpp\
+MAIN_TEST		:=	cgi_test.cpp
+MAIN_SERVER		:=	server.cpp
+MODS_SERVER		:=	asocket.cpp\
 					socketlistening.cpp\
 					socketconnected.cpp\
 					SocketUNIX.cpp\
@@ -24,34 +26,38 @@ SRCS_SERVER		:=	server.cpp asocket.cpp\
 					httpserver.cpp\
 					utils_string.cpp\
 					test_common.cpp
-
+SRCS_SERVER		:=	$(MAIN_SERVER) $(MODS_SERVER)
 OBJS_SERVER		:=	$(SRCS_SERVER:.cpp=.o)
 SRCS_CLIENT		:=	client.cpp asocket.cpp\
 					socketlistening.cpp\
 					socketconnected.cpp\
 					test_common.cpp
 OBJS_CLIENT		:=	$(SRCS_CLIENT:.cpp=.o)
+SRCS_TEST		:=	$(MAIN_TEST) $(MODS_SERVER)
+OBJS_TEST		:=	$(SRCS_TEST:.cpp=.o)
 
-NAME_CLIENT		:= webclient
-NAME_SERVER		:= webserv
-NAMES 			:= $(NAME_CLIENT) $(NAME_SERVER)
-RM				:= rm -rf
-CF				:= clang-format -i
+
+NAME_TEST		:=	testserv
+NAME_CLIENT		:=	webclient
+NAME_SERVER		:=	webserv
+NAMES 			:=	$(NAME_CLIENT) $(NAME_SERVER)
+RM				:=	rm -rf
+CF				:=	clang-format -i
 
 .PHONY			:	all
-all				:	$(NAMES)
+all				:	cf $(NAMES)
 
-cf_server:
-	$(CF) $(SRCS_SERVER)
+cf:
+	$(CF) *.{c,h}pp
 
-cf_client:
-	$(CF) $(SRCS_CLIENT)
+$(NAME_SERVER): $(OBJS_SERVER)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-$(NAME_SERVER): cf_server $(OBJS_SERVER)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS_SERVER)
+$(NAME_TEST): $(OBJS_TEST)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-$(NAME_CLIENT): cf_client $(OBJS_CLIENT)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS_CLIENT)
+$(NAME_CLIENT): $(OBJS_CLIENT)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
 clean:
 	$(RM) $(OBJS_SERVER) $(OBJS_CLIENT)
