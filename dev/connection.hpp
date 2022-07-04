@@ -9,19 +9,6 @@
 #include <iostream>
 #include <string>
 
-// コネクションオブジェクトの内部状態
-enum t_connection_phase {
-    // 受信モード
-    CONNECTION_RECEIVING,
-    // 送信モード(通常応答)
-    CONNECTION_RESPONDING,
-    // 送信モード(エラー応答)
-    CONNECTION_ERROR_RESPONDING,
-    // Gracefulに接続を切っていくモード
-    CONNECTION_SHUTTING_DOWN,
-    CONNECTION_DUMMY
-};
-
 // 準静的なコネクションの性質
 // "準静的" = リクエストの内容次第で変更されうるが, それ以外(=時間変化など)によっては変わらない
 struct ConnectionAttribute {
@@ -40,11 +27,25 @@ struct ConnectionAttribute {
 //  - レスポンスの送信
 //    - 生成は ルーティングクラス(IRouter) が行う
 class Connection : public ISocketLike {
+public:
+    // コネクションオブジェクトの内部状態
+    enum t_phase {
+        // 受信モード
+        CONNECTION_RECEIVING,
+        // 送信モード(通常応答)
+        CONNECTION_RESPONDING,
+        // 送信モード(エラー応答)
+        CONNECTION_ERROR_RESPONDING,
+        // Gracefulに接続を切っていくモード
+        CONNECTION_SHUTTING_DOWN,
+        CONNECTION_DUMMY
+    };
+
 private:
     IRouter *router_;
     ConnectionAttribute attr;
 
-    t_connection_phase phase;
+    t_phase phase;
     bool dying;
 
     SocketConnected *sock;

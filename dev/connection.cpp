@@ -40,7 +40,6 @@ t_fd Connection::get_fd() const {
 }
 
 void Connection::notify(IObserver &observer) {
-    // switch, try-catch は意図的にインデント崩して書いてます
     if (dying) {
         return;
     }
@@ -50,7 +49,7 @@ void Connection::notify(IObserver &observer) {
 
     switch (phase) {
         case CONNECTION_RECEIVING: {
-            // [コネクション:受信モード]
+            // [データ受信]
 
             try {
 
@@ -87,7 +86,7 @@ void Connection::notify(IObserver &observer) {
 
         case CONNECTION_ERROR_RESPONDING:
         case CONNECTION_RESPONDING: {
-            // [コネクション:送信モード]
+            // [データ送信]
 
             try {
 
@@ -126,7 +125,7 @@ void Connection::notify(IObserver &observer) {
         }
 
         case CONNECTION_SHUTTING_DOWN: {
-            // [graceful切断モード]
+            // [graceful切断]
 
             try {
 
