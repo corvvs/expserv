@@ -18,34 +18,35 @@
 #include <utility>
 #include <vector>
 
-enum t_http_request_parse_progress {
-    // 開始行の開始位置 を探している
-    PARSE_REQUEST_REQLINE_START,
-    // 開始行の終了位置 を探している
-    PARSE_REQUEST_REQLINE_END,
-    // ヘッダの終了位置 を探している
-    PARSE_REQUEST_HEADER_SECTION_END,
-    // ボディ を探している
-    PARSE_REQUEST_BODY,
-
-    // チャンクのサイズ行の終了位置 を探している
-    PARSE_REQUEST_CHUNK_SIZE_LINE_END,
-    // チャンクの終了位置 を探している
-    PARSE_REQUEST_CHUNK_DATA_END,
-    // チャンクの終了直後の改行 を探している
-    PARSE_REQUEST_CHUNK_DATA_CRLF,
-    // チャンクのトレイラーフィールドの終了位置 を探している
-    PARSE_REQUEST_TRAILER_FIELD_END,
-
-    PARSE_REQUEST_OVER,
-    PARSE_REQUEST_ERROR
-};
-
 // [HTTPリクエストクラス]
 // [責務]
 // - 順次供給されるバイト列をHTTPリクエストとして解釈すること
 class RequestHTTP {
 public:
+    enum t_parse_progress {
+        PP_UNREACHED,
+        // 開始行の開始位置 を探している
+        PP_REQLINE_START,
+        // 開始行の終了位置 を探している
+        PP_REQLINE_END,
+        // ヘッダの終了位置 を探している
+        PP_HEADER_SECTION_END,
+        // ボディ を探している
+        PP_BODY,
+
+        // チャンクのサイズ行の終了位置 を探している
+        PP_CHUNK_SIZE_LINE_END,
+        // チャンクの終了位置 を探している
+        PP_CHUNK_DATA_END,
+        // チャンクの終了直後の改行 を探している
+        PP_CHUNK_DATA_CRLF,
+        // チャンクのトレイラーフィールドの終了位置 を探している
+        PP_TRAILER_FIELD_END,
+
+        PP_OVER,
+        PP_ERROR
+    };
+
     static const size_t MAX_REQLINE_END = 8192;
     typedef HTTP::byte_string byte_string;
     // 他の byte_string の一部分を参照する軽量 string
@@ -59,7 +60,7 @@ public:
         // ヘッダ行解析において obs-fold に遭遇したかどうか
         bool found_obs_fold;
 
-        t_http_request_parse_progress parse_progress;
+        t_parse_progress parse_progress;
         size_t start_of_reqline;
         size_t end_of_reqline;
         size_t start_of_header;
@@ -138,10 +139,19 @@ private:
     // [HTTPヘッダ]
     HeaderHTTPHolder header_holder;
 
+    // [フロー関数群]
+    t_parse_progress reach_reqline_start(size_t len, bool is_disconnected);
+    t_parse_progress reach_reqline_end(size_t len, bool is_disconnected);
+    t_parse_progress reach_headers_end(size_t len, bool is_disconnected);
+    t_parse_progress reach_fixed_body_end(size_t len, bool is_disconnected);
+    t_parse_progress reach_chunked_size_line(size_t len, bool is_disconnected);
+    t_parse_progress reach_chunked_data_end(size_t len, bool is_disconnected);
+    t_parse_progress reach_chunked_data_termination(size_t len, bool is_disconnected);
+    t_parse_progress reach_chunked_trailer_end(size_t len, bool is_disconnected);
+    void analyze_headers(IndexRange res);
+
     // [パース関数群]
 
-    // 開始行の開始位置を探す
-    bool seek_reqline_start(size_t len);
     // 開始行の終了位置を探す
     bool seek_reqline_end(size_t len);
     // [begin, end) を要求行としてパースする

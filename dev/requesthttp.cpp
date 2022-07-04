@@ -26,7 +26,7 @@ HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
 RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false) {}
 
 RequestHTTP::RequestHTTP() : mid(0), cp() {
-    this->ps.parse_progress = PARSE_REQUEST_REQLINE_START;
+    this->ps.parse_progress = PP_REQLINE_START;
     this->cp.http_method    = HTTP::METHOD_UNKNOWN;
     this->cp.http_version   = HTTP::V_UNKNOWN;
     bytebuffer.reserve(MAX_REQLINE_END);
@@ -38,208 +38,83 @@ void RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
     bytebuffer.insert(bytebuffer.end(), bytes, bytes + feed_len);
     bool is_disconnected = feed_len == 0;
     size_t len           = 1;
+    t_parse_progress flow;
     do {
         len = bytebuffer.size() - this->mid;
         switch (this->ps.parse_progress) {
-            case PARSE_REQUEST_REQLINE_START: {
-
-                // 開始行の開始位置を探す
-                if (!seek_reqline_start(len)) {
+            case PP_REQLINE_START: {
+                flow = reach_reqline_start(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-                this->ps.parse_progress = PARSE_REQUEST_REQLINE_END;
-
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            case PARSE_REQUEST_REQLINE_END: {
-
-                // 開始行の終了位置を探す
-                if (!seek_reqline_end(len)) {
+            case PP_REQLINE_END: {
+                flow = reach_reqline_end(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-                light_string raw_req_line(bytebuffer, this->ps.start_of_reqline, this->ps.end_of_reqline);
-                // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
-                parse_reqline(raw_req_line);
-                this->ps.parse_progress = PARSE_REQUEST_HEADER_SECTION_END;
-
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            case PARSE_REQUEST_HEADER_SECTION_END: {
-                // ヘッダ部の終わりを探索する
-                // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
-                // mid以降についてCRLFを検索する:
-                // - 見つかった
-                //   - first == crlf_in_header.second である
-                //     -> あたり. このCRLFがヘッダの終わりを示す.
-                //   - そうでない
-                //     -> はずれ. このCRLFを crlf_in_header として続行.
-                // - 見つからなかった
-                //   -> もう一度受信する
-                IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-                this->mid      = res.second;
-                if (res.is_invalid()) {
+            case PP_HEADER_SECTION_END: {
+                flow = reach_headers_end(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-                if (this->ps.crlf_in_header.second != res.first) {
-                    // はずれ
-                    this->ps.crlf_in_header = res;
-                    continue;
-                }
-                // あたり
-                this->ps.end_of_header = res.first;
-                this->ps.start_of_body = res.second;
-                {
-                    // -> [start_of_header, end_of_header) を解析する
-                    const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
-                    parse_header_lines(header_lines, &this->header_holder);
-                    extract_control_headers();
-                }
-                VOUT(this->cp.is_body_chunked);
-                if (this->cp.is_body_chunked) {
-                    this->ps.parse_progress         = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
-                    this->ps.start_of_current_chunk = this->ps.start_of_body;
-                } else {
-                    this->ps.parse_progress = PARSE_REQUEST_BODY;
-                }
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            case PARSE_REQUEST_BODY: {
-
-                // TODO: 切断対応
-                this->mid += len;
-                // DSOUT() << "parsed_body_size: " << parsed_body_size() << std::endl;
-                // DSOUT() << "start_of_body: " << start_of_body << std::endl;
-                // DSOUT() << "content_length: " << content_length << std::endl;
-                // - 接続が切れていたら
-                //   -> ここまでをbodyとする
-                // - content-lengthが不定なら
-                //   -> 続行
-                // - 受信済みサイズが content-length を下回っていたら
-                //   -> 続行
-                // - (else) 受信済みサイズが content-length 以上なら
-                //   -> 受信済みサイズ = this->mid - start_of_body が content-length になるよう調整
-
-                if (parsed_body_size() < this->cp.body_size) {
+            case PP_BODY: {
+                flow = reach_fixed_body_end(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-
-                this->ps.end_of_body = this->cp.body_size + this->ps.start_of_body;
-                ;
-                this->mid               = this->ps.end_of_body;
-                this->ps.parse_progress = PARSE_REQUEST_OVER;
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            // chunked-body サイズ行終端を探す
-            case PARSE_REQUEST_CHUNK_SIZE_LINE_END: {
-                IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-                this->mid      = res.second;
-                if (res.is_invalid()) {
+            case PP_CHUNK_SIZE_LINE_END: {
+                flow = reach_chunked_size_line(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-                // [start_of_current_chunk, res.first) がサイズ行のはず.
-
-                light_string chunk_size_line(bytebuffer, this->ps.start_of_current_chunk, res.first);
-                QVOUT(chunk_size_line);
-                parse_chunk_size_line(chunk_size_line);
-                // TODO: サイズ行の解析
-                VOUT(this->ps.current_chunk.chunk_size);
-                if (this->ps.current_chunk.chunk_size == 0) {
-                    // 最終チャンクなら PARSE_REQUEST_TRAILER_FIELD_END に飛ばす
-                    this->ps.parse_progress         = PARSE_REQUEST_TRAILER_FIELD_END;
-                    this->ps.crlf_in_header         = res;
-                    this->ps.start_of_trailer_field = res.second;
-                    VOUT(chunked_body.size());
-                    VOUT(chunked_body.body());
-                    VOUT(this->ps.crlf_in_header.first);
-                    VOUT(this->ps.crlf_in_header.second);
-                    VOUT(this->mid);
-                } else {
-                    this->ps.start_of_current_chunk_data = this->mid;
-                    this->ps.parse_progress              = PARSE_REQUEST_CHUNK_DATA_END;
-                }
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            // chunked-body チャンク終端を探す
-            case PARSE_REQUEST_CHUNK_DATA_END: {
-                const byte_string::size_type received_data_size = this->mid - this->ps.start_of_current_chunk_data;
-                const byte_string::size_type data_end = this->ps.current_chunk.chunk_size - received_data_size;
-                if (data_end > len) {
-                    this->mid += len;
+            case PP_CHUNK_DATA_END: {
+                flow = reach_chunked_data_end(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-                this->mid += data_end;
-                this->ps.current_chunk.chunk_str = light_string(bytebuffer, this->ps.start_of_current_chunk, this->mid);
-                this->ps.current_chunk.data_str
-                    = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
-                QVOUT(this->ps.current_chunk.chunk_str);
-                QVOUT(this->ps.current_chunk.data_str);
-                this->ps.parse_progress = PARSE_REQUEST_CHUNK_DATA_CRLF;
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            /// チャンク終端の次がCRLFであることを確認する
-            case PARSE_REQUEST_CHUNK_DATA_CRLF: {
-                // CRLF|CR|LF
-                VOUT(this->mid);
-                IndexRange nl = ParserHelper::find_leading_crlf(bytebuffer, this->mid, len, is_disconnected);
-                if (nl.is_invalid()) {
-                    throw http_error("invalid chunk-data end?", HTTP::STATUS_BAD_REQUEST);
-                }
-                if (nl.length() == 0) {
+            case PP_CHUNK_DATA_CRLF: {
+                flow = reach_chunked_data_termination(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-                this->ps.current_chunk.data_str
-                    = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
-                this->ps.parse_progress         = PARSE_REQUEST_CHUNK_SIZE_LINE_END;
-                this->mid                       = nl.second;
-                this->ps.start_of_current_chunk = this->mid;
-                chunked_body.add_chunk(this->ps.current_chunk);
-                VOUT(this->mid);
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            // chunked-body トレイラーフィールド終端を探す
-            case PARSE_REQUEST_TRAILER_FIELD_END: {
-
-                // ヘッダ部の終わりを探索する
-                // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
-                // mid以降についてCRLFを検索する:
-                // - 見つかった
-                //   - first == crlf_in_header.second である
-                //     -> あたり. このCRLFがヘッダの終わりを示す.
-                //   - そうでない
-                //     -> はずれ. このCRLFを crlf_in_header として続行.
-                // - 見つからなかった
-                //   -> もう一度受信する
-                IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-                this->mid      = res.second;
-                if (res.is_invalid()) {
+            case PP_TRAILER_FIELD_END: {
+                flow = reach_chunked_trailer_end(len, is_disconnected);
+                if (flow == PP_UNREACHED) {
                     return;
                 }
-                if (this->ps.crlf_in_header.second != res.first) {
-                    // はずれ
-                    this->ps.crlf_in_header = res;
-                    continue;
-                }
-                // あたり
-                this->ps.end_of_trailer_field = res.first;
-                {
-                    VOUT(this->ps.start_of_trailer_field);
-                    VOUT(this->ps.end_of_trailer_field);
-                    const light_string trailer_field_lines(
-                        bytebuffer, this->ps.start_of_trailer_field, this->ps.end_of_trailer_field);
-                    parse_header_lines(trailer_field_lines, NULL);
-                }
-                this->ps.parse_progress = PARSE_REQUEST_OVER;
+                this->ps.parse_progress = flow;
                 continue;
             }
 
-            case PARSE_REQUEST_OVER: {
+            case PP_OVER: {
                 return;
             }
 
@@ -249,16 +124,183 @@ void RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
     } while (len > 0);
 }
 
-bool RequestHTTP::seek_reqline_start(size_t len) {
+RequestHTTP::t_parse_progress RequestHTTP::reach_reqline_start(size_t len, bool is_disconnected) {
+    (void)is_disconnected;
     DXOUT("* determining start_of_reqline... *");
     size_t s_o_s = ParserHelper::ignore_crlf(bytebuffer, this->mid, len);
     this->mid += s_o_s;
     if (s_o_s == len) {
-        return false;
+        return PP_UNREACHED;
     }
     // 開始行の開始位置が定まった
     this->ps.start_of_reqline = this->mid;
-    return true;
+    return PP_REQLINE_END;
+}
+
+RequestHTTP::t_parse_progress RequestHTTP::reach_reqline_end(size_t len, bool is_disconnected) {
+    (void)is_disconnected;
+    if (!seek_reqline_end(len)) {
+        return PP_UNREACHED;
+    }
+    light_string raw_req_line(bytebuffer, this->ps.start_of_reqline, this->ps.end_of_reqline);
+    // -> [start_of_reqline, end_of_reqline) が 開始行かどうか調べる.
+    parse_reqline(raw_req_line);
+    return PP_HEADER_SECTION_END;
+}
+
+RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is_disconnected) {
+    // ヘッダ部の終わりを探索する
+    // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
+    // mid以降についてCRLFを検索する:
+    // - 見つかった
+    //   - first == crlf_in_header.second である
+    //     -> あたり. このCRLFがヘッダの終わりを示す.
+    //   - そうでない
+    //     -> はずれ. このCRLFを crlf_in_header として続行.
+    // - 見つからなかった
+    //   -> もう一度受信する
+    (void)is_disconnected;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
+    this->mid      = res.second;
+    if (res.is_invalid()) {
+        return PP_UNREACHED;
+    }
+    if (this->ps.crlf_in_header.second != res.first) {
+        // はずれ: CRLFとCRLFの間が空いていた
+        this->ps.crlf_in_header = res;
+        return PP_HEADER_SECTION_END;
+    }
+    // あたり: ヘッダの終わりが見つかった
+    analyze_headers(res);
+    if (this->cp.is_body_chunked) {
+        return PP_CHUNK_SIZE_LINE_END;
+    } else {
+        return PP_BODY;
+    }
+}
+
+RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool is_disconnected) {
+    // TODO: 切断対応
+    // - 接続が切れていたら
+    //   -> ここまでをbodyとする
+    // - content-lengthが不定なら
+    //   -> 続行
+    // - 受信済みサイズが content-length を下回っていたら
+    //   -> 続行
+    // - (else) 受信済みサイズが content-length 以上なら
+    //   -> 受信済みサイズ = this->mid - start_of_body が content-length になるよう調整
+    (void)is_disconnected;
+    this->mid += len;
+    if (parsed_body_size() < this->cp.body_size) {
+        return PP_UNREACHED;
+    }
+    this->ps.end_of_body = this->cp.body_size + this->ps.start_of_body;
+    this->mid            = this->ps.end_of_body;
+    return PP_OVER;
+}
+
+RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_size_line(size_t len, bool is_disconnected) {
+    (void)is_disconnected;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
+    this->mid      = res.second;
+    if (res.is_invalid()) {
+        return PP_UNREACHED;
+    }
+    // [start_of_current_chunk, res.first) がサイズ行のはず.
+    light_string chunk_size_line(bytebuffer, this->ps.start_of_current_chunk, res.first);
+    QVOUT(chunk_size_line);
+    parse_chunk_size_line(chunk_size_line);
+    // TODO: サイズ行の解析
+    VOUT(this->ps.current_chunk.chunk_size);
+    if (this->ps.current_chunk.chunk_size == 0) {
+        // 最終チャンクなら PP_TRAILER_FIELD_END に飛ばす
+        this->ps.crlf_in_header         = res;
+        this->ps.start_of_trailer_field = res.second;
+        VOUT(chunked_body.size());
+        VOUT(chunked_body.body());
+        VOUT(this->ps.crlf_in_header.first);
+        VOUT(this->ps.crlf_in_header.second);
+        VOUT(this->mid);
+        return PP_TRAILER_FIELD_END;
+    } else {
+        this->ps.start_of_current_chunk_data = this->mid;
+        return PP_CHUNK_DATA_END;
+    }
+}
+
+RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_data_end(size_t len, bool is_disconnected) {
+    (void)is_disconnected;
+    const byte_string::size_type received_data_size = this->mid - this->ps.start_of_current_chunk_data;
+    const byte_string::size_type data_end           = this->ps.current_chunk.chunk_size - received_data_size;
+    if (data_end > len) {
+        this->mid += len;
+        return PP_UNREACHED;
+    }
+    this->mid += data_end;
+    this->ps.current_chunk.chunk_str = light_string(bytebuffer, this->ps.start_of_current_chunk, this->mid);
+    this->ps.current_chunk.data_str  = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
+    QVOUT(this->ps.current_chunk.chunk_str);
+    QVOUT(this->ps.current_chunk.data_str);
+    return PP_CHUNK_DATA_CRLF;
+}
+
+RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_data_termination(size_t len, bool is_disconnected) {
+    VOUT(this->mid);
+    IndexRange nl = ParserHelper::find_leading_crlf(bytebuffer, this->mid, len, is_disconnected);
+    if (nl.is_invalid()) {
+        throw http_error("invalid chunk-data end?", HTTP::STATUS_BAD_REQUEST);
+    }
+    if (nl.length() == 0) {
+        return PP_UNREACHED;
+    }
+    this->ps.current_chunk.data_str = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
+    this->mid                       = nl.second;
+    this->ps.start_of_current_chunk = this->mid;
+    chunked_body.add_chunk(this->ps.current_chunk);
+    VOUT(this->mid);
+    return PP_CHUNK_SIZE_LINE_END;
+}
+
+RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_trailer_end(size_t len, bool is_disconnected) {
+    // トレイラーフィールドの終わりを探索する
+    // `crlf_in_header` には「最後に見つけたCRLF」のレンジが入っている.
+    // mid以降についてCRLFを検索する:
+    // - 見つかった
+    //   - first == crlf_in_header.second である
+    //     -> あたり. このCRLFがヘッダの終わりを示す.
+    //   - そうでない
+    //     -> はずれ. このCRLFを crlf_in_header として続行.
+    // - 見つからなかった
+    //   -> もう一度受信する
+    (void)is_disconnected;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
+    this->mid      = res.second;
+    if (res.is_invalid()) {
+        return PP_UNREACHED;
+    }
+    if (this->ps.crlf_in_header.second != res.first) {
+        // はずれ
+        this->ps.crlf_in_header = res;
+        return PP_TRAILER_FIELD_END;
+    }
+    // あたり
+    this->ps.end_of_trailer_field = res.first;
+    const light_string trailer_field_lines(bytebuffer, this->ps.start_of_trailer_field, this->ps.end_of_trailer_field);
+    parse_header_lines(trailer_field_lines, NULL);
+    return PP_OVER;
+}
+
+void RequestHTTP::analyze_headers(IndexRange res) {
+    this->ps.end_of_header = res.first;
+    this->ps.start_of_body = res.second;
+    // -> [start_of_header, end_of_header) を解析する
+    const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
+    parse_header_lines(header_lines, &this->header_holder);
+    extract_control_headers();
+    VOUT(this->cp.is_body_chunked);
+    if (this->cp.is_body_chunked) {
+        this->ps.start_of_current_chunk = this->ps.start_of_body;
+    }
 }
 
 bool RequestHTTP::seek_reqline_end(size_t len) {
@@ -329,6 +371,8 @@ void RequestHTTP::parse_header_lines(const light_string &lines, HeaderHTTPHolder
 void RequestHTTP::parse_header_line(const light_string &line, HeaderHTTPHolder *holder) const {
 
     const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
+    QVOUT(line);
+    QVOUT(key);
     if (key.length() == line.length()) {
         // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
         // は無視して処理を続けます。
@@ -979,11 +1023,11 @@ RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(const light_str
 }
 
 bool RequestHTTP::is_ready_to_navigate() const {
-    return this->ps.parse_progress >= PARSE_REQUEST_BODY;
+    return this->ps.parse_progress >= PP_BODY;
 }
 
 bool RequestHTTP::is_ready_to_respond() const {
-    return this->ps.parse_progress >= PARSE_REQUEST_OVER;
+    return this->ps.parse_progress >= PP_OVER;
 }
 
 size_t RequestHTTP::receipt_size() const {
