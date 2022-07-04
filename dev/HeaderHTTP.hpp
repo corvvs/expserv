@@ -84,10 +84,9 @@ public:
     // なぜ vector などではなく list を使うのかというと, 再確保を防ぐため.
     // 再確保を防ぐのは, dict で HeaderHTTPItem のポインタを保持するから.
     typedef std::list<HeaderHTTPItem> list_type;
-    // operator[]
-    // d["host"]
     typedef std::map<header_key_type, HeaderHTTPItem *> dict_type;
     typedef HeaderHTTPItem::value_list_type value_list_type;
+    typedef std::map<byte_string, byte_string> joined_dict_type;
 
 private:
     list_type list;
@@ -104,6 +103,10 @@ public:
     const header_val_type *get_back_val(const header_key_type &normalized_key) const;
     // 指定したキーの値をすべて取得する
     const value_list_type *get_vals(const header_key_type &normalized_key) const;
+
+    // HTTPヘッダをCGIメタ変数に加工した辞書を返す
+    // 同じキーの値はすべて ", " で連結する
+    joined_dict_type get_cgi_http_vars() const;
 };
 
 #endif

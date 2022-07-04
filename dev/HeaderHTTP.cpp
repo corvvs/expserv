@@ -124,3 +124,21 @@ const HeaderHTTPHolder::value_list_type *HeaderHTTPHolder::get_vals(const header
     const HeaderHTTPItem *p = get_item(normalized_key);
     return p ? &(p->get_vals()) : NULL;
 }
+
+HeaderHTTPHolder::joined_dict_type HeaderHTTPHolder::get_cgi_http_vars() const {
+    HeaderHTTPHolder::joined_dict_type d;
+    for (dict_type::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+        header_key_type key = HTTP::strfy("HTTP_") + it->first;
+        HTTP::Utils::normalize_cgi_metavar_key(key);
+        HTTP::byte_string val;
+        HeaderHTTPItem::value_list_type vals = it->second->get_vals();
+        for (HeaderHTTPItem::value_list_type::const_iterator it = vals.begin(); it != vals.end(); ++it) {
+            if (it != vals.begin()) {
+                val += HTTP::strfy(", ");
+            }
+            val += (*it);
+        }
+        d.insert(std::pair<byte_string, byte_string>(key, val));
+    }
+    return d;
+}
